@@ -22,6 +22,9 @@ target/
 # Nix flake created by devenv
 .devenv.flake.nix
 
+# pre-commit configuration created by devenv
+.pre-commit-config.yaml
+
 # GraalVM error compilation reports
 reports/
 # GraalVM error reports
