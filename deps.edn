@@ -1,0 +1,13 @@
+{:aliases {:build {:deps {io.github.clojure/tools.build {:git/tag "v0.10.5" :git/sha "2a21b7a"}
+                          slipset/deps-deploy {:mvn/version "0.2.2"}}
+                   :ns-default build}
+           :dev {:extra-deps {djblue/portal {:mvn/version "0.57.3"}}
+                 :extra-paths ["dev"]}
+           :neil {:project {:name pod-jackdbd-jsoup/pod-jackdbd-jsoup}}
+           :test {:extra-deps {io.github.cognitect-labs/test-runner
+                               {:git/tag "v0.5.0" :git/sha "b3fd0d2"}}
+                  :extra-paths ["test"]
+                  :exec-fn cognitect.test-runner.api/test
+                  :main-opts ["-m" "cognitect.test-runner"]}}
+ :deps  {org.clojure/clojure {:mvn/version "1.12.0"}}
+ :paths ["src"]}

@@ -1,0 +1,23 @@
+# Directory where Calva (VS Code extension) keeps its state
+.calva/
+
+# Static analyzer and linter for Clojure code
+.clj-kondo/
+
+# Clojure classpath cache
+.cpcache/
+
+# Language Server Protocol
+.lsp/
+
+# nREPL port
+.nrepl-port
+
+# Compilation artifacts (e.g. jars, uberjars, binaries, images)
+target/
+
+# devenv cache
+.devenv/
+
+# Nix flake created by devenv
+.devenv.flake.nix
