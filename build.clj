@@ -2,14 +2,14 @@
   (:require [clojure.tools.build.api :as b]
             [clojure.edn :as edn]))
 
-(def project (-> (edn/read-string (slurp "deps.edn"))
-                 :aliases :neil :project))
+(def project (-> (edn/read-string (slurp "deps.edn")) :aliases :neil :project))
 (def lib (or (:name project) 'my/lib1))
 
-;; use neil project set version 1.2.0 to update the version in deps.edn
+(def initial-version "0.1.0")
+;; (def next-version "0.1.1")
+;; use `neil version set 0.1.0` to update the version in deps.edn
 
-(def version (or (:version project)
-                 "1.2.0"))
+(def version (or (:version project) initial-version))
 (def class-dir "target/classes")
 (def basis (b/create-basis {:project "deps.edn"}))
 (def uber-file (format "target/%s-%s-standalone.jar" (name lib) version))
@@ -46,6 +46,7 @@
                   :class-dir class-dir})
   (b/uber {:class-dir class-dir
            :uber-file uber-file
+           :main 'pod.jackdbd.jsoup
            :basis basis}))
 
 (defn deploy [opts]
@@ -57,3 +58,6 @@
           opts))
   opts)
 
+(comment
+  (clean nil)
+  (uber nil))

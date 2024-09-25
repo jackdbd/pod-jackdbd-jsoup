@@ -21,3 +21,8 @@ target/
 
 # Nix flake created by devenv
 .devenv.flake.nix
+
+# GraalVM error compilation reports
+reports/
+# GraalVM error reports
+svm_err_*
