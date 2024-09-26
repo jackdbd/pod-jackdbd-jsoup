@@ -17,21 +17,29 @@
 (defn symbol-exists-in-ns? [ns sym]
   (boolean (ns-resolve ns sym)))
 
-(deftest pod-compiled-to-binary-integration-test
+(defn linux? []
+  (str/includes? (System/getProperty "os.name") "Linux"))
+
+(deftest pod-packaged-into-uberjar-integration-test
+  (pods/load-pod ["java" "-jar" uber-file])
   (testing "the jsoup namespace exists"
-    (pods/load-pod exe-file)
-    ;; (prn "ns-map" (ns-map 'pod.jackdbd.jsoup))
     (is (= true (some? (find-ns 'pod.jackdbd.jsoup)))))
   (testing "the jsoup namespace exposes the symbols required for running the pod (-main, describe-map)"
-    (pods/load-pod exe-file)
     (let [m (ns-publics 'pod.jackdbd.jsoup)]
       (is (= true (symbol-exists-in-m? m 'main)))
       (is (= true (symbol-exists-in-m? m 'describe-map)))))
-  (testing "the jsoup namespace exposes the expected piblic API (select)"
-    (pods/load-pod exe-file)
+  (testing "the jsoup namespace exposes the expected public API (select)"
     (is (= true (symbol-exists-in-ns? 'pod.jackdbd.jsoup 'select)))))
 
-(deftest pod-packaged-into-uberjar-integration-test
-  (testing "the jsoup namespace exists"
-    (pods/load-pod ["java" "-jar" uber-file])
-    (is (= true (some? (find-ns 'pod.jackdbd.jsoup))))))
+(deftest pod-compiled-to-binary-integration-test
+  (when (linux?)
+    (pods/load-pod exe-file)
+    (testing "the jsoup namespace exists"
+      ;; (prn "ns-map" (ns-map 'pod.jackdbd.jsoup))
+      (is (= true (some? (find-ns 'pod.jackdbd.jsoup)))))
+    (testing "the jsoup namespace exposes the symbols required for running the pod (-main, describe-map)"
+      (let [m (ns-publics 'pod.jackdbd.jsoup)]
+        (is (= true (symbol-exists-in-m? m 'main)))
+        (is (= true (symbol-exists-in-m? m 'describe-map)))))
+    (testing "the jsoup namespace exposes the expected public API (select)"
+      (is (= true (symbol-exists-in-ns? 'pod.jackdbd.jsoup 'select))))))

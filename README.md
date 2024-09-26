@@ -1,5 +1,7 @@
 # pod-jackdbd-jsoup
 
+![CI workflow](https://github.com/jackdbd/pod-jackdbd-jsoup/actions/workflows/ci.yaml/badge.svg)
+
 Babashka pod for HTML parsing with [jsoup](https://jsoup.org/).
 
 ## Setup

@@ -36,30 +36,57 @@ TARGET="linux-amd64"
 echo "Compile $UBERJAR_PATH"
 echo "BABASHKA_STATIC=$BABASHKA_STATIC"
 echo "BABASHKA_MUSL=$BABASHKA_MUSL"
+
 echo "Use the following GraalVM native-image"
 native-image --version
 
 # https://github.com/babashka/pod-babashka-parcera/blob/master/script/compile
 # https://github.com/jaydeesimon/pod-jaydeesimon-jsoup/blob/master/script/compile
 
-# This works, when using the environment variables CPATH, LIBRARY_PATH, NIX_LDFLAGS
-native-image -jar $UBERJAR_PATH \
-  -H:ReflectionConfigurationFiles=reflection.json \
-  -H:+ReportExceptionStackTraces \
-  -J-Dclojure.compiler.direct-linking=true \
-  -J-Dclojure.spec.skip-macros=true \
-  "-J$JVM_MAX_HEAP_SIZE_AT_RUN_TIME" \
-  $HEAP_SIZE_AT_BUILD_TIME \
-  -march=native -Ob \
-  --gc=serial \
-  --initialize-at-build-time \
-  --native-image-info \
-  --no-fallback \
-  --no-server \
-  --report-unsupported-elements-at-runtime \
-  --static --libc=musl \
-  "--target=$TARGET" \
-  --verbose
+# These flags work fine on my local machine (GraalVM native-image 22 2024-03-19),
+# but not on the CI (GraalVM native-image 21.2.0)
+# -march=native
+# -Ob
+
+# GraalVM native-image 21.2.0 errors out with the following message when compiling with --libc=musl
+# com.oracle.svm.core.util.UserError$UserException: Musl can only be used with labsjdk 11.
+
+# https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/store-information-in-variables#default-environment-variables
+if [ "${CI+x}" ]; then
+  echo "Running on GitHub actions"
+  native-image -jar $UBERJAR_PATH \
+    -H:ReflectionConfigurationFiles=reflection.json \
+    -H:+ReportExceptionStackTraces \
+    -J-Dclojure.compiler.direct-linking=true \
+    -J-Dclojure.spec.skip-macros=true \
+    --gc=serial \
+    --initialize-at-build-time \
+    --no-fallback \
+    --no-server \
+    --report-unsupported-elements-at-runtime \
+    "--target=$TARGET" \
+    --verbose
+else
+  echo "NOT running on CI"
+  # This works, when using the environment variables CPATH, LIBRARY_PATH, NIX_LDFLAGS
+  native-image -jar $UBERJAR_PATH \
+    -H:ReflectionConfigurationFiles=reflection.json \
+    -H:+ReportExceptionStackTraces \
+    -J-Dclojure.compiler.direct-linking=true \
+    -J-Dclojure.spec.skip-macros=true \
+    "-J$JVM_MAX_HEAP_SIZE_AT_RUN_TIME" \
+    $HEAP_SIZE_AT_BUILD_TIME \
+    -march=native -Ob \
+    --gc=serial \
+    --initialize-at-build-time \
+    --native-image-info \
+    --no-fallback \
+    --no-server \
+    --report-unsupported-elements-at-runtime \
+    --static --libc=musl \
+    "--target=$TARGET" \
+    --verbose
+fi
 
 mv "$POD_ID-$POD_VERSION-standalone" "target/$POD_NAME-$POD_VERSION"
 echo "Binary artifact moved to target/$POD_NAME-$POD_VERSION"
