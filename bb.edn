@@ -24,4 +24,4 @@
                                    pod-version (:version project)
                                    jar-path (format "target/%s-%s-standalone.jar" pod-name pod-version)]
                                (shell "jar --file" jar-path "--list"))}
-         tests {:doc "Run all tests" :task (clojure "-M:test")}}}
+         tests {:doc "Run all tests" :task (clojure "-X:test")}}}

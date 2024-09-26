@@ -41,14 +41,7 @@
   (pods/load-pod ["java" "-jar" uber-file])
 
   ;; Example 2: load the pod compiled as an executable with GraalVM native-image
-  (pods/load-pod exe-file)
-  
-  (require '[pod.jackdbd.jsoup :as jsoup])
-  (keys (ns-publics 'pod.jackdbd.jsoup))
-
-  (jsoup/multi-arity-func)
-  (jsoup/multi-arity-func 7)
-  (jsoup/multi-arity-func 7 3) 
+  (pods/load-pod exe-file) 
    
   (jsoup/select html "div.foo") 
 

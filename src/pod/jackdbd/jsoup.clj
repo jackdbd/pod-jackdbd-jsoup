@@ -52,9 +52,7 @@
    `{:format :edn
      :namespaces [{:name pod.jackdbd.jsoup
                    :vars [{:name select}
-                          {:name multi-arity-func}
-                          {:name public-func-a}
-                          {:name public-func-b}]}]
+                          {:name multi-arity-func}]}]
      :opts {:shutdown {}}}))
 
 (debug describe-map)
