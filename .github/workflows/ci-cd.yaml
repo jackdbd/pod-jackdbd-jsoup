@@ -1,0 +1,208 @@
+name: 'CI/CD'
+
+on:
+  pull_request:
+  push:
+    branches:
+      - canary
+      - main
+
+env:
+  GRAALVM_VERSION: 23.0.0
+  HEAP_SIZE_AT_BUILD_TIME: '-R:MaxHeapSize=1024m'
+  JAVA_VERSION: 21
+  OPTIMIZATION_LEVEL: '-O2'
+  POD_ID: pod.jackdbd.jsoup
+  POD_NAME: pod-jackdbd-jsoup
+  POD_VERSION: 0.1.0
+
+jobs:
+  linux:
+    name: Build, Test (Linux)
+    # strategy:
+    #   matrix:
+    #     os: [ubuntu-latest, macOS-latest, windows-latest]
+    # runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🛎️ Checkout
+        uses: actions/checkout@v4
+
+      # https://github.com/marketplace/actions/github-action-for-graalvm
+      - name: 🔧 Setup GraalVM
+        uses: graalvm/setup-graalvm@v1
+        with:
+          check-for-updates: true
+          distribution: graalvm-community
+          java-version: ${{ env.JAVA_VERSION }}
+          native-image-job-reports: true
+          native-image-musl: true # Use musl to build a statically compiled binary (Linux only)
+          native-image-pr-reports: true
+          version: ${{ env.GRAALVM_VERSION }}
+          
+      # It's important to install java before installing clojure tools, because
+      # clojure tools needs java exclusions: babashka, clj-kondo and cljstyle.
+      # https://github.com/marketplace/actions/setup-clojure
+      - name: 🔧 Setup Clojure tools
+        uses: DeLaGuardo/setup-clojure@12.5
+        with:
+          cli: 'latest' # Clojure CLI based on tools.deps
+          bb: 'latest' # Babashka
+          
+      # Optional step:
+      # https://github.com/marketplace/actions/cache
+      - name: Cache clojure dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.m2/repository
+            ~/.gitlibs
+            ~/.deps.clj
+          # List all files containing dependencies:
+          # key: cljdeps-${{ hashFiles('deps.edn') }}
+          key: cljdeps-${{ hashFiles('deps.edn', 'bb.edn') }}
+          restore-keys: cljdeps-
+
+      # This takes ~7 minutes both on my laptop and on GitHub Actions. Maybe look for an alternative.
+      # - name: 🛡️ Audit deps.edn dependencies
+      #   run: clojure -M:clj-nvd check
+
+      - name: 📦 Package the pod into an uberjar
+        run: clojure -T:build uber
+
+      - name: 📦 Compile the uberjar into a binary with GraalVM native-image
+        run: ./script/compile.sh
+        env:
+          BABASHKA_STATIC: true
+          BABASHKA_MUSL: true
+        
+      - name: 🔍 Run all tests
+        run: clojure -X:test
+
+  macos:
+    name: Build, Test (MacOS)
+    runs-on: macOS-latest
+
+    steps:
+      - name: 🛎️ Checkout
+        uses: actions/checkout@v4
+    
+      - name: 🔧 Setup GraalVM
+        uses: graalvm/setup-graalvm@v1
+        with:
+          check-for-updates: true
+          distribution: graalvm-community
+          java-version: ${{ env.JAVA_VERSION }}
+          native-image-job-reports: true
+          native-image-pr-reports: true
+          version: ${{ env.GRAALVM_VERSION }}
+
+      - name: 🔧 Setup Clojure tools
+        uses: DeLaGuardo/setup-clojure@12.5
+        with:
+          cli: 'latest'
+      
+      - name: Cache clojure dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.m2/repository
+            ~/.gitlibs
+            ~/.deps.clj
+          key: cljdeps-${{ hashFiles('deps.edn', 'bb.edn') }}
+          restore-keys: cljdeps-
+
+      - name: 📦 Package the pod into an uberjar
+        run: clojure -T:build uber
+
+      - name: 📦 Compile the uberjar into a binary with GraalVM native-image
+        run: |
+          native-image \
+            -jar target/${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar \
+            '-H:ReflectionConfigurationFiles=reflection.json' \
+            '-H:+ReportExceptionStackTraces' \
+            '-J-Dclojure.compiler.direct-linking=true' \
+            ${{ env.HEAP_SIZE_AT_BUILD_TIME }} \
+            ${{ env.OPTIMIZATION_LEVEL }} \
+            '-march=native' \
+            '--initialize-at-build-time' \
+            '--native-image-info' \
+            '--no-fallback' \
+            '--report-unsupported-elements-at-runtime'
+
+      - run: mv ${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone target/${{ env.POD_NAME }}
+
+      - name: 🔍 Run all tests
+        run: clojure -X:test
+
+  windows:
+    name: Build, Test (Windows)
+    runs-on: windows-latest
+
+    steps:
+      - name: 🛎️ Checkout
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup GraalVM
+        uses: graalvm/setup-graalvm@v1
+        with:
+          check-for-updates: true
+          distribution: graalvm-community
+          java-version: ${{ env.JAVA_VERSION }}
+          native-image-job-reports: true
+          native-image-pr-reports: true
+          version: ${{ env.GRAALVM_VERSION }}
+
+      - name: 🔧 Setup Clojure tools
+        uses: DeLaGuardo/setup-clojure@12.5
+        with:
+          cli: 'latest'
+      
+      - name: Cache clojure dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.m2/repository
+            ~/.gitlibs
+            ~/.deps.clj
+          key: cljdeps-${{ hashFiles('deps.edn', 'bb.edn') }}
+          restore-keys: cljdeps-
+  
+      - name: 📦 Package the pod into an uberjar
+        run: clojure -T:build uber
+      
+      # See: https://github.com/babashka/pod-babashka-buddy/blob/main/script/compile.bat
+      - name: 📦 Compile the uberjar into a binary with GraalVM native-image
+        run: >
+          native-image
+          -jar target\${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar
+          '-H:ReflectionConfigurationFiles=reflection.json'
+          '-H:+ReportExceptionStackTraces'
+          '-J-Dclojure.compiler.direct-linking=true'
+          ${{ env.HEAP_SIZE_AT_BUILD_TIME }}
+          ${{ env.OPTIMIZATION_LEVEL }}
+          '-march=native'
+          '--initialize-at-build-time'
+          '--native-image-info'
+          '--no-fallback'
+          '--report-unsupported-elements-at-runtime'
+
+      - run: move "${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.exe" ".\\target\\${{ env.POD_NAME }}.exe"
+
+      - name: 🔍 Run all tests
+        run: clojure -X:test
+
+  release:
+    name: Release (TODO)
+    if: ${{ github.event_name != 'pull_request' }}
+    needs: [linux, macos, windows]
+    concurrency: deploy-group # Ensures that only a single instance of this job is running at any given time.
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🚀 Create GitHub release
+        run: echo "Create GitHub release with all the Linux/MacOS/Windows artifacts"
+
+      - name: 🌐 Deploy to Clojars
+        run: echo "TODO deploy uberjar to Clojars"

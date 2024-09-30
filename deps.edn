@@ -1,6 +1,9 @@
 {:aliases {:build {:deps {io.github.clojure/tools.build {:git/tag "v0.10.5" :git/sha "2a21b7a"}
                           slipset/deps-deploy {:mvn/version "0.2.2"}}
                    :ns-default build}
+           :clj-nvd {:extra-deps {clj-nvd/clj-nvd {:git/url "https://github.com/miikka/clj-nvd.git"
+                                                   :sha "f2ec98699e057a379baf170cb49cf7ad76874a70"}}
+                     :main-opts ["-m" "clj-nvd.core"]}
            :dev {:extra-deps {djblue/portal {:mvn/version "0.57.3"}}
                  :extra-paths ["dev"]}
            :neil {:project {:name pod.jackdbd.jsoup/pod.jackdbd.jsoup

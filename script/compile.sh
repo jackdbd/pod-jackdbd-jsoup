@@ -6,87 +6,48 @@ POD_NAME=pod-jackdbd-jsoup
 POD_VERSION=0.1.0
 UBERJAR_PATH="target/$POD_ID-$POD_VERSION-standalone.jar"
 
-# In the GraalVM Community Edition, only the Serial GC is available.
-# https://www.graalvm.org/22.0/reference-manual/native-image/MemoryManagement/
-# If no maximum Java heap size is specified, a native image that uses the Serial
-# GC will set its maximum Java heap size to 80% of the physical memory size.
-# https://www.graalvm.org/22.0/reference-manual/native-image/MemoryManagement/#java-heap-size
-JVM_MAX_HEAP_SIZE_AT_RUN_TIME="-Xmx4500m"
+# Entry point of the GraalVM native-image documentation.
+# https://www.graalvm.org/latest/reference-manual/native-image/
+# https://www.graalvm.org/latest/reference-manual/native-image/overview/BuildOutput/
+
 HEAP_SIZE_AT_BUILD_TIME="-R:MaxHeapSize=1024m"
 
-# Optimization levels and CPU features
 # https://www.graalvm.org/latest/reference-manual/native-image/optimizations-and-performance/
-# -march=native -Ob
+# -Ob: quicker build time
+# -O2: better performance
+OPTIMIZATION_LEVEL="-O2"
 
-# I think cross-compiling the GraalVM native image requires downloading the C
-# library for that OS-architecture and place it here:
-# RUN ls /usr/lib64/graalvm/graalvm22-ce-java17/lib/svm/clibraries
-# See also how Babashka does it:
-# https://github.com/babashka/babashka/blob/master/.github/workflows/build.yml
+# native-image does NOT support cross-compilation.
+# https://github.com/oracle/graal/issues/407
 TARGET="linux-amd64"
-
-# https://www.graalvm.org/22.1/reference-manual/native-image/StaticImages/
-# Use these 2 options to compile a mostly statically-linked binary
-# "-H:+StaticExecutableWithDynamicLibC"
-# "--libc=glibc"
-# Use these 2 options to compile a completely statically-linked binary
-# "--static"
-# "--libc=musl"
-
-echo "Compile $UBERJAR_PATH"
-echo "BABASHKA_STATIC=$BABASHKA_STATIC"
-echo "BABASHKA_MUSL=$BABASHKA_MUSL"
-
-echo "Use the following GraalVM native-image"
-native-image --version
-
-# https://github.com/babashka/pod-babashka-parcera/blob/master/script/compile
-# https://github.com/jaydeesimon/pod-jaydeesimon-jsoup/blob/master/script/compile
-
-# These flags work fine on my local machine (GraalVM native-image 22 2024-03-19),
-# but not on the CI (GraalVM native-image 21.2.0)
-# -march=native
-# -Ob
-
-# GraalVM native-image 21.2.0 errors out with the following message when compiling with --libc=musl
-# com.oracle.svm.core.util.UserError$UserException: Musl can only be used with labsjdk 11.
 
 # https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/store-information-in-variables#default-environment-variables
 if [ "${CI+x}" ]; then
   echo "Running on GitHub actions"
-  native-image -jar $UBERJAR_PATH \
-    -H:ReflectionConfigurationFiles=reflection.json \
-    -H:+ReportExceptionStackTraces \
-    -J-Dclojure.compiler.direct-linking=true \
-    -J-Dclojure.spec.skip-macros=true \
-    --gc=serial \
-    --initialize-at-build-time \
-    --no-fallback \
-    --no-server \
-    --report-unsupported-elements-at-runtime \
-    "--target=$TARGET" \
-    --verbose
 else
-  echo "NOT running on CI"
-  # This works, when using the environment variables CPATH, LIBRARY_PATH, NIX_LDFLAGS
-  native-image -jar $UBERJAR_PATH \
-    -H:ReflectionConfigurationFiles=reflection.json \
-    -H:+ReportExceptionStackTraces \
-    -J-Dclojure.compiler.direct-linking=true \
-    -J-Dclojure.spec.skip-macros=true \
-    "-J$JVM_MAX_HEAP_SIZE_AT_RUN_TIME" \
-    $HEAP_SIZE_AT_BUILD_TIME \
-    -march=native -Ob \
-    --gc=serial \
-    --initialize-at-build-time \
-    --native-image-info \
-    --no-fallback \
-    --no-server \
-    --report-unsupported-elements-at-runtime \
-    --static --libc=musl \
-    "--target=$TARGET" \
-    --verbose
+  echo "NOT running on GitHub actions"
 fi
 
-mv "$POD_ID-$POD_VERSION-standalone" "target/$POD_NAME-$POD_VERSION"
-echo "Binary artifact moved to target/$POD_NAME-$POD_VERSION"
+# I am not I need to add this flag.
+# -J-Dclojure.compiler.direct-linking=true
+# https://clojure.org/reference/compilation#directlinking
+
+# When running on NixOS, this works only when the environment variables CPATH,
+# LIBRARY_PATH, NIX_LDFLAGS are set.
+native-image -jar $UBERJAR_PATH \
+  -H:ReflectionConfigurationFiles=reflection.json \
+  -H:+ReportExceptionStackTraces \
+  -J-Dclojure.compiler.direct-linking=true \
+  $HEAP_SIZE_AT_BUILD_TIME \
+  $OPTIMIZATION_LEVEL \
+  -march=native \
+  --initialize-at-build-time \
+  --native-image-info \
+  --no-fallback \
+  --report-unsupported-elements-at-runtime \
+  --static --libc=musl \
+  "--target=$TARGET" \
+  --verbose
+
+mv "$POD_ID-$POD_VERSION-standalone" "target/$POD_NAME"
+echo "Binary artifact moved to target/$POD_NAME"

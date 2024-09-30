@@ -3,8 +3,7 @@ name: 'Notify of workflow run conclusion'
 on:
   workflow_run:
     workflows:
-      - 'CI'
-      - 'Windows pipeline'
+      - 'CI/CD'
     types: [completed]
 
 jobs:
