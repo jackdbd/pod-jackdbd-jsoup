@@ -22,6 +22,9 @@ target/
 # Nix flake created by devenv
 .devenv.flake.nix
 
+# Directory used by the Portal VS Code extension
+.portal
+
 # pre-commit configuration created by devenv
 .pre-commit-config.yaml
 

@@ -1,6 +1,7 @@
 # pod-jackdbd-jsoup
 
 ![CI workflow](https://github.com/jackdbd/pod-jackdbd-jsoup/actions/workflows/ci.yaml/badge.svg)
+![Windows](https://github.com/jackdbd/pod-jackdbd-jsoup/actions/workflows/windows-pipeline.yaml/badge.svg)
 
 Babashka pod for HTML parsing with [jsoup](https://jsoup.org/).
 
