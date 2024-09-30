@@ -10,31 +10,39 @@ on:
 
 jobs:
   macos-windows:
-    name: Build, test (MacOS, Windows)
+    name: Build, test (MacOS)
     strategy:
       matrix:
-        os: [macOS-latest, windows-latest]
+        os: [macOS-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - name: 🛎️ Checkout
         uses: actions/checkout@v4
     
-      # It's important to install java before installing clojure tools, because
-      # clojure tools needs java exclusions: babashka, clj-kondo and cljstyle.
-      # https://github.com/marketplace/actions/setup-clojure
       # https://github.com/marketplace/actions/setup-java-jdk
-      - name: ☕️ Setup java
-        uses: actions/setup-java@v4
+      # - name: ☕️ Setup java
+      #   uses: actions/setup-java@v4
+      #   with:
+      #     distribution: 'temurin'
+      #     java-version: '21'
+
+      # https://github.com/marketplace/actions/github-action-for-graalvm
+      - name: 🔧 Setup GraalVM
+        uses: graalvm/setup-graalvm@v1
         with:
-          distribution: 'temurin'
-          java-version: '21'
+          check-for-updates: true
+          components: native-image,native-image-llvm-backend
+          distribution: graalvm-community
+          java-version: 21
+          native-image-job-reports: true
+          native-image-pr-reports: true
+          version: 23.0.0
 
       - name: 🔧 Setup Clojure tools
         uses: DeLaGuardo/setup-clojure@12.5
         with:
           cli: 'latest' # Clojure CLI based on tools.deps
           bb: 'latest' # Babashka
-          cmd-exe-workaround: 'latest' # Replaces `clojure` with `deps.clj` on Windows
       
       # Optional step:
       #  https://github.com/marketplace/actions/cache
@@ -65,17 +73,21 @@ jobs:
       - name: 🛎️ Checkout
         uses: actions/checkout@v4
 
+      # https://github.com/marketplace/actions/github-action-for-graalvm
+      - name: 🔧 Setup GraalVM
+        uses: graalvm/setup-graalvm@v1
+        with:
+          check-for-updates: true
+          components: native-image,native-image-llvm-backend
+          distribution: graalvm-community
+          java-version: 21
+          native-image-job-reports: true
+          native-image-pr-reports: true
+          version: 23.0.0
+          
       # It's important to install java before installing clojure tools, because
       # clojure tools needs java exclusions: babashka, clj-kondo and cljstyle.
       # https://github.com/marketplace/actions/setup-clojure
-      # https://github.com/marketplace/actions/setup-graalvm-action
-      - name: Setup GraalVM action
-        uses: ayltai/setup-graalvm@v1
-        with:
-          java-version: 16
-          graalvm-version: 21.2.0
-          native-image: true
-
       - name: 🔧 Setup Clojure tools
         uses: DeLaGuardo/setup-clojure@12.5
         with:
@@ -99,18 +111,11 @@ jobs:
       - name: 📦 Package the Babashka pod into an uberjar
         run: clojure -T:build uber
 
-      # Use this to install musl?
-      # https://github.com/marketplace/actions/shogan-rust-static-build
-      # - name: ⚙️ Install musl
-      #   run: sudo apt-get install -y musl
-
       - name: 📦 Compile the Babashka pod into a binary with GraalVM native-image
         run: ./script/compile.sh
         env:
           BABASHKA_STATIC: true
           BABASHKA_MUSL: true
-          # CPATH: ""
-          # LIBRARY_PATH: ""
         
       - name: 🔍 Run all tests
         run: clojure -X:test
