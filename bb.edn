@@ -3,34 +3,60 @@
  :paths ["bb" "src"]
  :tasks {:requires ([clojure.edn :as edn]
                     [tasks])
-         build:native {:doc "Compile the pod into a statically-linked binary with GraalVM native-image"
-                       :depends [build:uberjar]
-                       :task (shell "script/compile.sh")}
-         build:uberjar {:doc "Package the the pod into an uberjar"
-                        :depends [clean]
-                        :task (clojure "-T:build uber")}
-         clean {:doc "Clean all compilation artifacts (e.g. jars, binaries)"
-                :task (shell "rm -rf target/")}
-         cp {:doc "Print the classpath"
-             :task (tasks/print-classpath)}
-         demo:native {:doc "Run a demo that uses the pod compiled as a statically-linked binary"
-                      :depends [build:native]
-                      :task (tasks/demo-pod-native)}
-         demo:uberjar {:doc "Run a demo that uses the pod packaged into an uberjar"
-                       :depends [build:uberjar]
-                       :task (tasks/demo-pod-uberjar)}
-         deploy:clojars {:doc "Deploy the pod to Clojars"
-                         :depends [build:uberjar]
-                         :task (clojure "-T:build deploy")}
-         deps:audit {:doc "Audit all dependencies declared in deps.edn"
-                     :task (clojure "-M:clj-nvd check")}
-         list:uberjar {:doc "List the contents of the pod packaged into an uberjar"
-                       :depends [build:uberjar]
-                       :task (let [project (-> (edn/read-string (slurp "deps.edn")) :aliases :neil :project)
-                                   pod-name "pod.jackdbd.jsoup"
-                                   pod-version (:version project)
-                                   jar-path (format "target/%s-%s-standalone.jar" pod-name pod-version)]
-                               (shell "jar --file" jar-path "--list"))}
-         tests {:doc "Run all tests"
-              ;;   :depends [build:native]
-                :task (clojure "-X:test")}}}
+
+         build:native
+         {:doc "Compile the pod into a statically-linked binary with GraalVM native-image"
+          :depends [build:uberjar]
+          :task (shell "script/compile.sh")}
+
+         build:uberjar
+         {:doc "Package the the pod into an uberjar"
+          :depends [clean]
+          :task (clojure "-T:build uber")}
+
+         clean
+         {:doc "Clean all compilation artifacts (e.g. jars, binaries)"
+          :task (shell "rm -rf target/")}
+
+         cp
+         {:doc "Print the classpath"
+          :task (tasks/print-classpath)}
+
+         demo:native
+         {:doc "Run a demo that uses the pod compiled as a statically-linked binary"
+          :depends [build:native]
+          :task (tasks/demo-pod-native)}
+
+         deploy:clojars
+         {:doc "Deploy the pod to Clojars"
+          :depends [build:uberjar]
+          :task (clojure "-T:build deploy")}
+
+         deps:audit
+         {:doc "Audit all dependencies declared in deps.edn"
+          :task (clojure "-M:clj-nvd check")}
+
+         list:uberjar
+         {:doc "List the contents of the pod packaged into an uberjar"
+          :depends [build:uberjar]
+          :task (let [project (-> (edn/read-string (slurp "deps.edn")) :aliases :neil :project)
+                      pod-name "pod.jackdbd.jsoup"
+                      pod-version (:version project)
+                      jar-path (format "target/%s-%s-standalone.jar" pod-name pod-version)]
+                  (shell "jar --file" jar-path "--list"))}
+
+         manifest.edn
+         {:doc "Generate manifest.edn for the Babashka pod registry"
+          :task (let [project (-> (edn/read-string (slurp "deps.edn")) :aliases :neil :project)
+                      pod-name "pod.jackdbd.jsoup"
+                      pod-version (:version project)]
+                  (tasks/write-manifest.edn {:license "MIT"
+                                             :version pod-version
+                                             :x86_64-linux "some-github-release-url-linux_x86_64.zip"
+                                             :x86_64-macos "some-github-release-url-macos_x86_64.zip"
+                                             :x86_64-windows "some-github-release-url-windows_x86_64.zip"}))}
+
+         tests
+         {:doc "Run all tests"
+          :depends [build:native]
+          :task (clojure "-X:test")}}}

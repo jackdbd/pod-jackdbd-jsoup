@@ -13,10 +13,19 @@ UBERJAR_PATH="target/$POD_ID-$POD_VERSION-standalone.jar"
 
 HEAP_SIZE_AT_BUILD_TIME="-R:MaxHeapSize=1024m"
 
-# https://www.graalvm.org/latest/reference-manual/native-image/optimizations-and-performance/
+# https://www.graalvm.org/latest/reference-manual/native-image/optimizations-and-performance/#optimization-levels
 # -Ob: quicker build time
 # -O2: better performance
 OPTIMIZATION_LEVEL="-O2"
+
+# https://www.graalvm.org/latest/reference-manual/native-image/optimizations-and-performance/#optimizing-for-specific-machines
+MACHINE_TYPE="-march=x86-64-v3"
+# I tried using -march=native but it produced a binary that was not working on
+# my machine. When I tried to execute it, I got the following error:
+# The current machine does not support all of the following CPU features that are required by the image: [...]
+
+# Use this command to list all the available machine types.
+# native-image -march=list
 
 # native-image does NOT support cross-compilation.
 # https://github.com/oracle/graal/issues/407
@@ -41,7 +50,7 @@ native-image -jar $UBERJAR_PATH \
   -J-Dclojure.compiler.direct-linking=true \
   $HEAP_SIZE_AT_BUILD_TIME \
   $OPTIMIZATION_LEVEL \
-  -march=native \
+  $MACHINE_TYPE \
   --initialize-at-build-time \
   --native-image-info \
   --no-fallback \

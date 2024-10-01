@@ -7,6 +7,12 @@ on:
       - canary
       - main
 
+# GitHub hosted runners are available for Linux x64, Windows x64, and macOS (x64 and arm).
+# https://docs.github.com/en/actions/using-github-hosted-runners/using-larger-runners/about-larger-runners#runner-images
+# https://github.com/actions/runner-images
+# There are other providers that offer ARM runners for Linux (e.g. WarpBuild).
+# https://github.com/neysofu/awesome-github-actions-runners#list-of-providers
+
 env:
   GRAALVM_VERSION: 23.0.0
   HEAP_SIZE_AT_BUILD_TIME: '-R:MaxHeapSize=1024m'
@@ -86,11 +92,17 @@ jobs:
           name: uberjar
           path: target/${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar
 
-      - name: 📦 Compile the uberjar into a binary with GraalVM native-image
+      - name: 📦 Compile uberjar to x86_64-linux binary with GraalVM native-image
         run: ./script/compile.sh
         env:
           BABASHKA_STATIC: true
           BABASHKA_MUSL: true
+
+      - name: ⬆️ Upload the x86_64 Linux binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: x86_64-linux
+          path: target/${{ env.POD_NAME }}
         
       - name: 🔍 Run all tests
         run: clojure -X:test
@@ -140,7 +152,10 @@ jobs:
       # Troubleshooting: let's see if we have actually downloaded the uberjar
       # - run: ls -R
 
-      - name: 📦 Compile the uberjar into a binary with GraalVM native-image
+      - name: 📦 Compile uberjar to AArch64-macOS binary with GraalVM native-image
+        # I tried setting -march=x86_64 and the GitHub hosted runner macos-latest
+        # gave me this error:
+        # On AArch64, only 'ARMV8_A', 'ARMV8_1_A', 'COMPATIBILITY', 'NATIVE' are available.
         run: |
           native-image \
             -jar ${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar \
@@ -149,7 +164,7 @@ jobs:
             '-J-Dclojure.compiler.direct-linking=true' \
             ${{ env.HEAP_SIZE_AT_BUILD_TIME }} \
             ${{ env.OPTIMIZATION_LEVEL }} \
-            '-march=native' \
+            '-march=armv8-a' \
             '--initialize-at-build-time' \
             '--native-image-info' \
             '--no-fallback' \
@@ -161,6 +176,12 @@ jobs:
           mkdir target
           cp ${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar target/${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar
           cp ${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone target/${{ env.POD_NAME }}
+
+      - name: ⬆️ Upload the x86_64 macOS binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: aarch64-macos-binary
+          path: target/${{ env.POD_NAME }}
 
       - name: 🔍 Run all tests
         run: clojure -X:test
@@ -210,7 +231,7 @@ jobs:
           name: uberjar
         
       # See: https://github.com/babashka/pod-babashka-buddy/blob/main/script/compile.bat
-      - name: 📦 Compile the uberjar into a binary with GraalVM native-image
+      - name: 📦 Compile uberjar to x86_64-windows binary with GraalVM native-image
         run: >
           native-image
           -jar ${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar
@@ -219,7 +240,7 @@ jobs:
           '-J-Dclojure.compiler.direct-linking=true'
           ${{ env.HEAP_SIZE_AT_BUILD_TIME }}
           ${{ env.OPTIMIZATION_LEVEL }}
-          '-march=native'
+          '-march=x86-64-v3'
           '--initialize-at-build-time'
           '--native-image-info'
           '--no-fallback'
@@ -231,6 +252,12 @@ jobs:
           move ${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar target\\${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar
           move "${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.exe" ".\\target\\${{ env.POD_NAME }}.exe"
         shell: cmd
+
+      - name: ⬆️ Upload the x86_64 Windows binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: x86_64-windows-binary
+          path: ".\\target\\${{ env.POD_NAME }}.exe"
 
       - name: 🔍 Run all tests
         run: clojure -X:test
@@ -250,7 +277,33 @@ jobs:
         uses: DeLaGuardo/setup-clojure@12.5
         with:
           cli: 'latest'
-      
+          bb: 'latest'
+
+      - name: ⬇️ Download the x86_64 Linux binary
+        uses: actions/download-artifact@v4
+        with:
+          name: x86_64-linux-binary
+
+      - name: ⬇️ Download the x86_64 macOS binary
+        uses: actions/download-artifact@v4
+        with:
+          name: aarch64-macos-binary
+
+      - name: ⬇️ Download the x86_64 Windows binary
+        uses: actions/download-artifact@v4
+        with:
+          name: x86_64-windows-binary
+
+      - name: 🚀 Create GitHub release (TODO)
+        run: echo "Create GitHub release with all the Linux/MacOS/Windows artifacts"
+
+      - name: 📄 Write manifest.edn for Babashka pod registry (TODO)
+        run: bb manifest.edn
+
+      # Troubleshooting: let's see if we have actually downloaded all the binaries
+      # compiled with GraalVM native-image and we generated the manifest.edn file
+      - run: ls -R
+
       - name: 📦 Package the pod into a jar
         run: clojure -T:build jar :snapshot false
 
@@ -259,13 +312,3 @@ jobs:
           CLOJARS_USERNAME: jackdbd
           CLOJARS_PASSWORD: ${{ secrets.CLOJARS_PASSWORD }}
         run: clojure -T:build deploy :snapshot false
-
-      # TODO: Gather all binaries compiled with GraalVM native-image
-
-      - name: 🚀 Create GitHub release (TODO)
-        run: echo "Create GitHub release with all the Linux/MacOS/Windows artifacts"
-
-      # Babashka pod registry: https://github.com/babashka/pod-registry/
-      # See example here: https://github.com/babashka/pod-registry/blob/master/manifests/retrogradeorbit/bootleg/0.1.9/manifest.edn
-      - name: 🌐 Publish manifest.edn to Babashka pod registry (TODO)
-        run: echo "create zip archives for all architectures (compile the binaries with GraalVM native-image)"
