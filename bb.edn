@@ -22,11 +22,6 @@
          {:doc "Print the classpath"
           :task (tasks/print-classpath)}
 
-         demo:native
-         {:doc "Run a demo that uses the pod compiled as a statically-linked binary"
-          :depends [build:native]
-          :task (tasks/demo-pod-native)}
-
          deploy:clojars
          {:doc "Deploy the pod to Clojars"
           :depends [build:uberjar]
@@ -56,7 +51,7 @@
                                              :x86_64-macos "some-github-release-url-macos_x86_64.zip"
                                              :x86_64-windows "some-github-release-url-windows_x86_64.zip"}))}
 
-         tests
+         test
          {:doc "Run all tests"
-          :depends [build:native]
+          ;; :depends [build:native]
           :task (clojure "-X:test")}}}

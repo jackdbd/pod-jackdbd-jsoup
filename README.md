@@ -43,14 +43,6 @@ ldd target/pod-jackdbd-jsoup
 objdump --dynamic-syms target/pod-jackdbd
 ```
 
-Run a quick demo...
-
-```sh
-bb bb/how_to_use.bb
-```
-
-...or start a Babashka REPL and evaluate the forms in `how_to_use.bb`
-
 ## Tests
 
 Run all tests

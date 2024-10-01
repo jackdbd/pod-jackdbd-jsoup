@@ -3,9 +3,7 @@
             [babashka.http-client :as http]
             [babashka.pods :as pods]
             [clojure.edn :as edn]
-            [clojure.pprint :as pprint]
-            [clojure.string :as str]
-            [clojure.walk :as walk]))
+            [clojure.string :as str]))
 
 (def project (-> (edn/read-string (slurp "deps.edn")) :aliases :neil :project))
 (def pod-id (:name project))
@@ -62,7 +60,7 @@
                                         :artifact/executable pod-name}))]
     {:pod/name pod-id
      :pod/description "Babashka pod for parsing HTML with jsoup."
-    ;;  :pod/example "examples/bootleg.clj"
+     :pod/example "examples/jsoup.bb"
      :pod/language "clojure"
      :pod/license license
      :pod/version version

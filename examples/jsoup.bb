@@ -1,20 +1,27 @@
-(ns how-to-use
-  (:require [babashka.http-client :as http]
-            [babashka.pods :as pods]
-            [cheshire.core :as json]
-            [clojure.edn :as edn]
-            [clojure.string :as str]))
+#!/usr/bin/env bb
+(ns jsoup
+  (:require
+   [babashka.pods :as pods]
+   [cheshire.core :as json]
+   [clojure.edn :as edn]
+   [clojure.string :as str]))
+
+;; Run this script with `bb -f examples/jsoup.bb`
+;; Or make it executable with `chmod +x examples/jsoup.bb` and run it with `./examples/jsoup.bb`
 
 (def project (-> (edn/read-string (slurp "deps.edn")) :aliases :neil :project))
 (def pod-spec (:name project))
 (def pod-id (name pod-spec))
 (def pod-name (str/replace pod-id #"\." "-"))
-;; (def pod-version "0.1.10")
 (def pod-version (:version project))
+;; (def pod-version "0.1.10")
 
-(def jar-file (format "target/%s-%s.jar" pod-id pod-version))
-(def uber-file (format "target/%s-%s-standalone.jar" pod-id pod-version))
 (def exe-file (format "target/%s" pod-name))
+
+(pods/load-pod exe-file)
+;; (pods/load-pod 'pod.jackdbd.jsoup "0.1.1")
+
+(require '[pod.jackdbd.jsoup :as jsoup])
 
 (def html (str/join "" ["<!DOCTYPE html>"
                         "<html lang='en-US'>"
@@ -30,9 +37,6 @@
                         "</body>"
                         "</html>"]))
 
-(pods/load-pod exe-file)
-(require '[pod.jackdbd.jsoup :as jsoup])
-
 (def filepath "target/test-html.json")
 (def parsed (jsoup/select html "div.foo"))
 (spit filepath (json/generate-string {:html html :parsed parsed}))
@@ -40,6 +44,17 @@
 
 (comment
   ;; Run these commands in a Babashka REPL
+  (require '[babashka.pods :as pods])
+
+  (def project (-> (edn/read-string (slurp "deps.edn")) :aliases :neil :project))
+  (def pod-spec (:name project))
+  (def pod-id (name pod-spec))
+  (def pod-name (str/replace pod-id #"\." "-"))
+  (def pod-version (:version project))
+
+  (def jar-file (format "target/%s-%s.jar" pod-id pod-version))
+  (def uber-file (format "target/%s-%s-standalone.jar" pod-id pod-version))
+  (def exe-file (format "target/%s" pod-name))
 
   ;; Example 1: load the pod compiled as an uberjar
   (pods/load-pod ["java" "-jar" uber-file])
@@ -51,8 +66,9 @@
   ;; https://github.com/babashka/pod-registry
   ;; https://clojars.org/com.github.jackdbd/pod.jackdbd.jsoup
   (pods/load-pod pod-spec "0.1.10")
-   
-  (jsoup/select html "div.foo") 
+
+  (require '[pod.jackdbd.jsoup :as jsoup])
+  (require '[babashka.http-client :as http])
 
   (-> (http/get "https://clojure.org")
       :body

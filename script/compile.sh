@@ -4,8 +4,15 @@ set -euo pipefail
 POD_ID=pod.jackdbd.jsoup
 POD_NAME=pod-jackdbd-jsoup
 POD_VERSION=$(bb -e '(-> (slurp "deps.edn") edn/read-string :aliases :neil :project :version)' | tr -d '"')
-UBERJAR_PATH="target/$POD_ID-$POD_VERSION-standalone.jar"
-# echo "UBERJAR_PATH is $UBERJAR_PATH"
+
+# https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/store-information-in-variables#default-environment-variables
+if [ "${CI+x}" ]; then
+  # running on GitHub actions
+  UBERJAR_PATH="$POD_ID-$POD_VERSION-standalone.jar"
+else
+  UBERJAR_PATH="target/$POD_ID-$POD_VERSION-standalone.jar"
+fi
+echo "UBERJAR_PATH is $UBERJAR_PATH"
 
 # Entry point of the GraalVM native-image documentation.
 # https://www.graalvm.org/latest/reference-manual/native-image/
@@ -31,14 +38,7 @@ MACHINE_TYPE="-march=x86-64-v3"
 # https://github.com/oracle/graal/issues/407
 TARGET="linux-amd64"
 
-# https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/store-information-in-variables#default-environment-variables
-if [ "${CI+x}" ]; then
-  echo "Running on GitHub actions"
-else
-  echo "NOT running on GitHub actions"
-fi
-
-# I am not I need to add this flag.
+# I am not sure I need to add this flag.
 # -J-Dclojure.compiler.direct-linking=true
 # https://clojure.org/reference/compilation#directlinking
 
@@ -59,5 +59,11 @@ native-image -jar $UBERJAR_PATH \
   "--target=$TARGET" \
   --verbose
 
-mv "$POD_ID-$POD_VERSION-standalone" "target/$POD_NAME"
-echo "Binary artifact moved to target/$POD_NAME"
+if [ "${CI+x}" ]; then
+  # Avoid moving the artifact when running on GitHub actions (other steps in the
+  # GitHub workflow expect the artifact to be here).
+  echo "Binary artifact is at $POD_ID-$POD_VERSION-standalone" 
+else
+  mv "$POD_ID-$POD_VERSION-standalone" "target/$POD_NAME"
+  echo "Binary artifact moved to target/$POD_NAME"
+fi
