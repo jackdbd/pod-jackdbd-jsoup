@@ -101,7 +101,7 @@ jobs:
       - name: ⬆️ Upload the x86_64 Linux binary
         uses: actions/upload-artifact@v4
         with:
-          name: x86_64-linux
+          name: x86_64-linux-binary
           path: target/${{ env.POD_NAME }}
         
       - name: 🔍 Run all tests
@@ -144,7 +144,7 @@ jobs:
           key: cljdeps-${{ hashFiles('deps.edn', 'bb.edn') }}
           restore-keys: cljdeps-
 
-      - name: ⬇️ Download the uberjar
+      - name: ⬇️ Download uberjar
         uses: actions/download-artifact@v4
         with:
           name: uberjar
@@ -177,7 +177,7 @@ jobs:
           cp ${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar target/${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar
           cp ${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone target/${{ env.POD_NAME }}
 
-      - name: ⬆️ Upload the x86_64 macOS binary
+      - name: ⬆️ Upload the aarch64 macOS binary
         uses: actions/upload-artifact@v4
         with:
           name: aarch64-macos-binary
@@ -225,7 +225,7 @@ jobs:
           key: cljdeps-${{ hashFiles('deps.edn', 'bb.edn') }}
           restore-keys: cljdeps-
 
-      - name: ⬇️ Download the uberjar
+      - name: ⬇️ Download uberjar
         uses: actions/download-artifact@v4
         with:
           name: uberjar
@@ -269,6 +269,9 @@ jobs:
     concurrency: deploy-group # Ensures that only a single instance of this job is running at any given time.
     runs-on: ubuntu-latest
 
+    env:
+      POD_VERSION: ${{ needs.linux.outputs.pod_version }}
+
     steps:
       - name: 🛎️ Checkout
         uses: actions/checkout@v4
@@ -279,23 +282,34 @@ jobs:
           cli: 'latest'
           bb: 'latest'
 
-      - name: ⬇️ Download the x86_64 Linux binary
+      - name: ⬇️ Download x86_64 Linux binary
         uses: actions/download-artifact@v4
         with:
           name: x86_64-linux-binary
 
-      - name: ⬇️ Download the x86_64 macOS binary
+      - name: ⬇️ Download aarch64 macOS binary
         uses: actions/download-artifact@v4
         with:
           name: aarch64-macos-binary
+          path: $GITHUB_WORKSPACE/aarch64-macos
 
-      - name: ⬇️ Download the x86_64 Windows binary
+      - name: ⬇️ Download x86_64 Windows binary
         uses: actions/download-artifact@v4
         with:
           name: x86_64-windows-binary
 
-      - name: 🚀 Create GitHub release (TODO)
-        run: echo "Create GitHub release with all the Linux/MacOS/Windows artifacts"
+      # https://github.com/marketplace/actions/gh-release
+      - name: 🚀 Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          body: |
+            This is a release of ${{ env.POD_NAME }} version ${{ env.POD_VERSION }}.
+          draft: true
+          # TODO: add to files: CHANGELOG.md manifest.edn jar? uberjar? pom.xml?
+          files: |
+            LICENSE
+            ${{ env.POD_NAME }}.exe
+            ${{ env.POD_NAME }}
 
       - name: 📄 Write manifest.edn for Babashka pod registry (TODO)
         run: bb manifest.edn
@@ -307,6 +321,7 @@ jobs:
       - name: 📦 Package the pod into a jar
         run: clojure -T:build jar :snapshot false
 
+      # TODO: maybe create a snapshot release when the branch is not main (e.g. canary)
       - name: 🌐 Publish the jar to Clojars
         env:
           CLOJARS_USERNAME: jackdbd
