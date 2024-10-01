@@ -3,8 +3,9 @@ set -euo pipefail
 
 POD_ID=pod.jackdbd.jsoup
 POD_NAME=pod-jackdbd-jsoup
-POD_VERSION=0.1.0
+POD_VERSION=$(bb -e '(-> (slurp "deps.edn") edn/read-string :aliases :neil :project :version)' | tr -d '"')
 UBERJAR_PATH="target/$POD_ID-$POD_VERSION-standalone.jar"
+# echo "UBERJAR_PATH is $UBERJAR_PATH"
 
 # Entry point of the GraalVM native-image documentation.
 # https://www.graalvm.org/latest/reference-manual/native-image/

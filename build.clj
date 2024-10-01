@@ -17,9 +17,9 @@
 
 (def project (-> (edn/read-string (slurp "deps.edn")) :aliases :neil :project))
 (def lib (:name project))
-(defn- the-version [patch] (format "0.1.%s" patch))
-(def version (the-version (b/git-count-revs nil)))
-(def snapshot (the-version "999-SNAPSHOT"))
+(def version (:version project))
+;; https://stackoverflow.com/a/5901460/3036129
+(def snapshot-version (format "%s-%s-%s" version (b/git-count-revs nil) "SNAPSHOT"))
 
 ;; https://clojure.github.io/tools.build/clojure.tools.build.api.html#var-write-pom
 (defn- pom-template [{:keys [version]}]
@@ -40,7 +40,7 @@
     [:tag (str "v" version)]]])
 
 (defn- shared-config [opts]
-  (let [version (if (:snapshot opts) snapshot version)]
+  (let [version (if (:snapshot opts) snapshot-version version)]
     (assoc opts
            :basis (b/create-basis {:project "deps.edn"})
            :class-dir "target/classes"
@@ -99,9 +99,8 @@
 
 (defn deploy "Deploy the JAR to Clojars." [opts]
   (let [config (shared-config opts)
-        {:keys [jar-file uber-file]} config
+        {:keys [jar-file]} config
         artifact (b/resolve-path jar-file)
-        ;; artifact (b/resolve-path uber-file)
         pom-file (b/pom-path (select-keys config [:lib :class-dir]))]
 
     ;; https://github.com/slipset/deps-deploy/blob/master/doc/intro.md
@@ -111,8 +110,8 @@
   opts)
 
 (comment
-  (clean nil)
-  (uber nil)
+  (prn (pom-template {:version version}))
+  (prn (pom-template {:version snapshot-version}))
   (jar {})
   (uber {})
   (deploy {}))

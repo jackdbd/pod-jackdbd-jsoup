@@ -14,7 +14,6 @@ env:
   OPTIMIZATION_LEVEL: '-O2'
   POD_ID: pod.jackdbd.jsoup
   POD_NAME: pod-jackdbd-jsoup
-  POD_VERSION: 0.1.0
 
 jobs:
   linux:
@@ -49,7 +48,7 @@ jobs:
         with:
           cli: 'latest' # Clojure CLI based on tools.deps
           bb: 'latest' # Babashka
-          
+    
       # Optional step:
       # https://github.com/marketplace/actions/cache
       - name: Cache clojure dependencies
@@ -102,6 +101,12 @@ jobs:
         uses: DeLaGuardo/setup-clojure@12.5
         with:
           cli: 'latest'
+          bb: 'latest'
+
+      - name: Set POD_VERSION
+        run: echo "POD_VERSION=$(bb -e '(-> (slurp "deps.edn") edn/read-string :aliases :neil :project :version)') | tr -d '"'" >> $GITHUB_ENV
+
+      - run: echo "POD_VERSION is ${{ env.POD_VERSION }}"
       
       - name: Cache clojure dependencies
         uses: actions/cache@v4
@@ -158,6 +163,14 @@ jobs:
         uses: DeLaGuardo/setup-clojure@12.5
         with:
           cli: 'latest'
+          bb: 'latest'
+
+      - name: Set POD_VERSION
+        run: |
+          $version = bb -e '(-> (slurp "deps.edn") edn/read-string :aliases :neil :project :version)'
+          echo "POD_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
+
+      - run: echo "POD_VERSION is $env:POD_VERSION"
       
       - name: Cache clojure dependencies
         uses: actions/cache@v4

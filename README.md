@@ -17,13 +17,13 @@ This project is managed with [neil](https://github.com/babashka/neil) and [Babas
 ### JAR
 
 ```sh
-clj -T:build jar :snapshot false
+clj -T:build jar
 ```
 
 ### Uber-JAR
 
 ```sh
-clj -T:build uber :snapshot false
+clj -T:build uber
 ```
 
 ### Executable binary
@@ -31,8 +31,9 @@ clj -T:build uber :snapshot false
 If you are on Linux, you can compile a statically-linked binary with the following command, which uses GraalVM native-image with [musl](https://musl.libc.org/) support.
 
 ```sh
-./script/compile.sh
-# or, in alternative:
+clj -T:build uber && ./script/compile.sh
+
+# or, in alternative, just run the following command:
 bb build:native
 ```
 
@@ -69,7 +70,7 @@ neil version patch
 neil version minor
 ```
 
-These commands:
+These `neil` commands:
 
 - Create a Git commit and tag (this can be bypassed with `--no-tag`)
 - Require the working directory to be clean (this can be bypassed with `--force`)
