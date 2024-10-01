@@ -83,6 +83,9 @@ jobs:
     name: Build, Test (MacOS)
     runs-on: macOS-latest
 
+    outputs:
+      pod_version: ${{ steps.set_pod_version.outputs.pod_version }}
+
     steps:
       - name: 🛎️ Checkout
         uses: actions/checkout@v4
@@ -103,10 +106,12 @@ jobs:
           cli: 'latest'
           bb: 'latest'
 
-      - name: Set POD_VERSION
-        run: echo "POD_VERSION=$(bb -e '(-> (slurp "deps.edn") edn/read-string :aliases :neil :project :version)') | tr -d '"'" >> $GITHUB_ENV
-
-      - run: echo "POD_VERSION is ${{ env.POD_VERSION }}"
+      - name: Set pod version both as environment variable (POD_VERSION) and job output (pod_version)
+        id: set_pod_version
+        run: |
+          POD_VERSION=$(bb -e '(-> (slurp "deps.edn") edn/read-string :aliases :neil :project :version)' | tr -d '"')
+          echo "POD_VERSION=$POD_VERSION" >> $GITHUB_ENV
+          echo "::set-output name=pod_version::$POD_VERSION"
       
       - name: Cache clojure dependencies
         uses: actions/cache@v4
@@ -144,10 +149,16 @@ jobs:
   windows:
     name: Build, Test (Windows)
     runs-on: windows-latest
+    needs: macos
+
+    env:
+      POD_VERSION: ${{ needs.macos.outputs.pod_version }}
 
     steps:
       - name: 🛎️ Checkout
         uses: actions/checkout@v4
+
+      - run: echo "POD_VERSION is ${{ env.POD_VERSION }}"
 
       - name: 🔧 Setup GraalVM
         uses: graalvm/setup-graalvm@v1
@@ -163,14 +174,6 @@ jobs:
         uses: DeLaGuardo/setup-clojure@12.5
         with:
           cli: 'latest'
-          bb: 'latest'
-
-      - name: Set POD_VERSION
-        run: |
-          $version = bb -e '(-> (slurp "deps.edn") edn/read-string :aliases :neil :project :version)'
-          echo "POD_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
-
-      - run: echo "POD_VERSION is $env:POD_VERSION"
       
       - name: Cache clojure dependencies
         uses: actions/cache@v4
