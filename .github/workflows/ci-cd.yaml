@@ -57,7 +57,7 @@ jobs:
         run: |
           POD_VERSION=$(bb -e '(-> (slurp "deps.edn") edn/read-string :aliases :neil :project :version)' | tr -d '"')
           echo "POD_VERSION=$POD_VERSION" >> $GITHUB_ENV
-          echo "::set-output name=pod_version::$POD_VERSION"
+          echo "pod_version=$POD_VERSION" >> $GITHUB_OUTPUT
     
       # Optional step:
       # https://github.com/marketplace/actions/cache
