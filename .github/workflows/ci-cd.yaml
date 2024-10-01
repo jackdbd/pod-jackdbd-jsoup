@@ -24,6 +24,9 @@ jobs:
     # runs-on: ${{ matrix.os }}
     runs-on: ubuntu-latest
 
+    outputs:
+      pod_version: ${{ steps.set_pod_version.outputs.pod_version }}
+
     steps:
       - name: 🛎️ Checkout
         uses: actions/checkout@v4
@@ -48,6 +51,13 @@ jobs:
         with:
           cli: 'latest' # Clojure CLI based on tools.deps
           bb: 'latest' # Babashka
+
+      - name: Set POD_VERSION (environment variable) and pod_version (job output)
+        id: set_pod_version
+        run: |
+          POD_VERSION=$(bb -e '(-> (slurp "deps.edn") edn/read-string :aliases :neil :project :version)' | tr -d '"')
+          echo "POD_VERSION=$POD_VERSION" >> $GITHUB_ENV
+          echo "::set-output name=pod_version::$POD_VERSION"
     
       # Optional step:
       # https://github.com/marketplace/actions/cache
@@ -70,6 +80,12 @@ jobs:
       - name: 📦 Package the pod into an uberjar
         run: clojure -T:build uber
 
+      - name: ⬆️ Upload the uberjar
+        uses: actions/upload-artifact@v4
+        with:
+          name: uberjar
+          path: target/${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar
+
       - name: 📦 Compile the uberjar into a binary with GraalVM native-image
         run: ./script/compile.sh
         env:
@@ -82,9 +98,10 @@ jobs:
   macos:
     name: Build, Test (MacOS)
     runs-on: macOS-latest
+    needs: [linux]
 
-    outputs:
-      pod_version: ${{ steps.set_pod_version.outputs.pod_version }}
+    env:
+      POD_VERSION: ${{ needs.linux.outputs.pod_version }}
 
     steps:
       - name: 🛎️ Checkout
@@ -104,14 +121,6 @@ jobs:
         uses: DeLaGuardo/setup-clojure@12.5
         with:
           cli: 'latest'
-          bb: 'latest'
-
-      - name: Set pod version both as environment variable (POD_VERSION) and job output (pod_version)
-        id: set_pod_version
-        run: |
-          POD_VERSION=$(bb -e '(-> (slurp "deps.edn") edn/read-string :aliases :neil :project :version)' | tr -d '"')
-          echo "POD_VERSION=$POD_VERSION" >> $GITHUB_ENV
-          echo "::set-output name=pod_version::$POD_VERSION"
       
       - name: Cache clojure dependencies
         uses: actions/cache@v4
@@ -123,13 +132,18 @@ jobs:
           key: cljdeps-${{ hashFiles('deps.edn', 'bb.edn') }}
           restore-keys: cljdeps-
 
-      - name: 📦 Package the pod into an uberjar
-        run: clojure -T:build uber
+      - name: ⬇️ Download the uberjar
+        uses: actions/download-artifact@v4
+        with:
+          name: uberjar
+
+      # Troubleshooting: let's see if we have actually downloaded the uberjar
+      # - run: ls -R
 
       - name: 📦 Compile the uberjar into a binary with GraalVM native-image
         run: |
           native-image \
-            -jar target/${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar \
+            -jar ${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar \
             '-H:ReflectionConfigurationFiles=reflection.json' \
             '-H:+ReportExceptionStackTraces' \
             '-J-Dclojure.compiler.direct-linking=true' \
@@ -141,7 +155,12 @@ jobs:
             '--no-fallback' \
             '--report-unsupported-elements-at-runtime'
 
-      - run: mv ${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone target/${{ env.POD_NAME }}
+      # The tests expect the uberjar and the binary to be in a directory called "target"
+      - name: Copy the uberjar and the binary to the target directory
+        run: |
+          mkdir target
+          cp ${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar target/${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar
+          cp ${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone target/${{ env.POD_NAME }}
 
       - name: 🔍 Run all tests
         run: clojure -X:test
@@ -149,16 +168,16 @@ jobs:
   windows:
     name: Build, Test (Windows)
     runs-on: windows-latest
-    needs: macos
+    needs: [linux]
 
     env:
-      POD_VERSION: ${{ needs.macos.outputs.pod_version }}
+      POD_VERSION: ${{ needs.linux.outputs.pod_version }}
 
     steps:
       - name: 🛎️ Checkout
         uses: actions/checkout@v4
 
-      - run: echo "POD_VERSION is ${{ env.POD_VERSION }}"
+      # - run: echo "POD_VERSION is ${{ env.POD_VERSION }}"
 
       - name: 🔧 Setup GraalVM
         uses: graalvm/setup-graalvm@v1
@@ -184,15 +203,17 @@ jobs:
             ~/.deps.clj
           key: cljdeps-${{ hashFiles('deps.edn', 'bb.edn') }}
           restore-keys: cljdeps-
-  
-      - name: 📦 Package the pod into an uberjar
-        run: clojure -T:build uber
-      
+
+      - name: ⬇️ Download the uberjar
+        uses: actions/download-artifact@v4
+        with:
+          name: uberjar
+        
       # See: https://github.com/babashka/pod-babashka-buddy/blob/main/script/compile.bat
       - name: 📦 Compile the uberjar into a binary with GraalVM native-image
         run: >
           native-image
-          -jar target\${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar
+          -jar ${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar
           '-H:ReflectionConfigurationFiles=reflection.json'
           '-H:+ReportExceptionStackTraces'
           '-J-Dclojure.compiler.direct-linking=true'
@@ -204,7 +225,12 @@ jobs:
           '--no-fallback'
           '--report-unsupported-elements-at-runtime'
 
-      - run: move "${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.exe" ".\\target\\${{ env.POD_NAME }}.exe"
+      - name: Copy the uberjar and the binary to the target directory
+        run: |
+          mkdir target
+          move ${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar target\\${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar
+          move "${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.exe" ".\\target\\${{ env.POD_NAME }}.exe"
+        shell: cmd
 
       - name: 🔍 Run all tests
         run: clojure -X:test

@@ -2,7 +2,6 @@
 
 ![CI/CD](https://github.com/jackdbd/pod-jackdbd-jsoup/actions/workflows/ci-cd.yaml/badge.svg)
 [![Clojars Project](https://img.shields.io/clojars/v/com.github.jackdbd/pod.jackdbd.jsoup.svg)](https://clojars.org/com.github.jackdbd/pod.jackdbd.jsoup)
-[![Clojars Project](https://img.shields.io/clojars/v/com.github.jackdbd/pod.jackdbd.jsoup.svg?include_prereleases)](https://clojars.org/com.github.jackdbd/pod.jackdbd.jsoup)
 
 Babashka pod for parsing HTML with [jsoup](https://jsoup.org/).
 
