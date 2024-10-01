@@ -24,7 +24,14 @@
     LIBRARY_PATH = "${pkgs.zlib}/lib:${pkgs.glibc}/lib";
     NIX_LDFLAGS = "-L${pkgs.zlib}/lib -L${pkgs.glibc}/lib";
 
-    # JVM_OPTS = "-Dclojure.main.report=stderr";
+    CLOJARS_USERNAME = "jackdbd";
+
+    # In order to access an absolute path we need to set impure: true in devenv.yaml
+    CLOJARS_PASSWORD = let
+      clojars_file = builtins.readFile "/run/secrets/clojars";
+      clojars_secrets = builtins.fromJSON clojars_file;
+    in
+      clojars_secrets.deploy_token;
   };
 
   languages = {

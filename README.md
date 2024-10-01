@@ -1,7 +1,12 @@
 # pod-jackdbd-jsoup
 
-![CI workflow](https://github.com/jackdbd/pod-jackdbd-jsoup/actions/workflows/ci.yaml/badge.svg)
-![Windows](https://github.com/jackdbd/pod-jackdbd-jsoup/actions/workflows/windows-pipeline.yaml/badge.svg)
+![CI/CD](https://github.com/jackdbd/pod-jackdbd-jsoup/actions/workflows/ci-cd.yaml/badge.svg)
+
+<!-- [![Clojars Project](https://img.shields.io/clojars/v/degree9/featherscript.svg)](https://clojars.org/com.github.jackdbd/pod.jackdbd.jsoup) -->
+
+<!-- [![Dependencies Status](https://versions.deps.co/degree9/featherscript/status.svg)](https://versions.deps.co/degree9/featherscript) -->
+
+<!-- [![Downloads](https://versions.deps.co/degree9/featherscript/downloads.svg)](https://versions.deps.co/degree9/featherscript) -->
 
 Babashka pod for HTML parsing with [jsoup](https://jsoup.org/).
 
@@ -21,17 +26,19 @@ bb build:uberjar
 
 ## Compile the pod into an executable binary
 
+If you are on Linux, you can compile a statically-linked binary with the following command, which uses GraalVM native-image with [musl](https://musl.libc.org/) support.
+
 ```sh
 ./script/compile.sh
 # or, in alternative:
 bb build:native
 ```
 
-Double check that the binary compiled with GraalVM native-image is statically linked.
+Double check that the binary is statically linked.
 
 ```sh
-ldd target/pod-jackdbd-jsoup-0.1.0
-objdump --dynamic-syms target/pod-jackdbd-jsoup-0.1.0
+ldd target/pod-jackdbd-jsoup
+objdump --dynamic-syms target/pod-jackdbd
 ```
 
 Run a quick demo...
@@ -47,13 +54,5 @@ bb bb/how_to_use.bb
 Run all tests
 
 ```sh
-clj -M:test
-```
-
-## Troubleshooting
-
-```sh
-rm svm_err_*
-rm -rf ~/.m2/repository/org/jsoup/
-rm -rf ~/.cache/clojure-lsp/
+clj -X:test
 ```

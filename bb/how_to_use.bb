@@ -10,7 +10,7 @@
 (def pod-name (str/replace pod-id #"\." "-"))
 (def pod-version (:version project))
 (def uber-file (format "target/%s-%s-standalone.jar" pod-id pod-version))
-(def exe-file (format "target/%s-%s" pod-name pod-version))
+(def exe-file (format "target/%s" pod-name))
 
 (def html (str/join "" ["<!DOCTYPE html>"
                         "<html lang='en-US'>"

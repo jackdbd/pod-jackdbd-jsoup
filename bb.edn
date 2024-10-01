@@ -1,30 +1,36 @@
 {:deps {local/deps {:local/root "."}}
  :min-bb-version "1.3.0"
- :paths ["bb" "dev" "src"]
+ :paths ["bb" "src"]
  :tasks {:requires ([clojure.edn :as edn]
                     [tasks])
-         build:native {:doc "Compile the Babashka pod into a statically-linked binary with GraalVM native-image"
+         build:native {:doc "Compile the pod into a statically-linked binary with GraalVM native-image"
                        :depends [build:uberjar]
                        :task (shell "script/compile.sh")}
-         build:uberjar {:doc "Package the the Babashka pod into an uberjar"
+         build:uberjar {:doc "Package the the pod into an uberjar"
                         :depends [clean]
                         :task (clojure "-T:build uber")}
          clean {:doc "Clean all compilation artifacts (e.g. jars, binaries)"
                 :task (shell "rm -rf target/")}
-         cp {:doc "Print the classpath" :task (tasks/print-classpath)}
-         demo:native {:doc "Run a demo that uses the Babashka pod compiled as a binary"
+         cp {:doc "Print the classpath"
+             :task (tasks/print-classpath)}
+         demo:native {:doc "Run a demo that uses the pod compiled as a statically-linked binary"
                       :depends [build:native]
                       :task (tasks/demo-pod-native)}
-         demo:uberjar {:doc "Run a demo that uses the Babashka pod packaged into an uberjar"
-                     ;;   :depends [build:uberjar]
+         demo:uberjar {:doc "Run a demo that uses the pod packaged into an uberjar"
+                       :depends [build:uberjar]
                        :task (tasks/demo-pod-uberjar)}
-         deps:audit {:doc "Audit the dependencies declared in deps.edn"
+         deploy:clojars {:doc "Deploy the pod to Clojars"
+                         :depends [build:native]
+                         :task (clojure "-T:build deploy")}
+         deps:audit {:doc "Audit all dependencies declared in deps.edn"
                      :task (clojure "-M:clj-nvd check")}
-         list:uberjar {:doc "List the contents of the Babashka pod packaged into an uberjar"
-                       ;; :depends [build:uberjar]
+         list:uberjar {:doc "List the contents of the pod packaged into an uberjar"
+                       :depends [build:uberjar]
                        :task (let [project (-> (edn/read-string (slurp "deps.edn")) :aliases :neil :project)
                                    pod-name "pod.jackdbd.jsoup"
                                    pod-version (:version project)
                                    jar-path (format "target/%s-%s-standalone.jar" pod-name pod-version)]
                                (shell "jar --file" jar-path "--list"))}
-         tests {:doc "Run all tests" :task (clojure "-X:test")}}}
+         tests {:doc "Run all tests"
+              ;;   :depends [build:native]
+                :task (clojure "-X:test")}}}

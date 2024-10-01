@@ -194,15 +194,26 @@ jobs:
         run: clojure -X:test
 
   release:
-    name: Release (TODO)
+    name: Release
     if: ${{ github.event_name != 'pull_request' }}
     needs: [linux, macos, windows]
     concurrency: deploy-group # Ensures that only a single instance of this job is running at any given time.
     runs-on: ubuntu-latest
 
     steps:
-      - name: 🚀 Create GitHub release
+      - name: 🛎️ Checkout
+        uses: actions/checkout@v4
+
+      - name: 🚀 Create GitHub release (TODO)
         run: echo "Create GitHub release with all the Linux/MacOS/Windows artifacts"
 
-      - name: 🌐 Deploy to Clojars
-        run: echo "TODO deploy uberjar to Clojars"
+      - name: 🔧 Setup Clojure tools
+        uses: DeLaGuardo/setup-clojure@12.5
+        with:
+          cli: 'latest'
+
+      - name: 🌐 Publish to Clojars
+        env:
+          CLOJARS_USERNAME: jackdbd
+          CLOJARS_PASSWORD: ${{ secrets.CLOJARS_PASSWORD }}
+        run: clojure -T:build deploy

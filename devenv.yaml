@@ -13,3 +13,7 @@ inputs:
 # If you have more than one devenv you can merge them
 #imports:
 # - ./backend
+
+# In order to access absolute paths in `devenv.nix`, we need to set `impure: true` here.
+# https://devenv.sh/reference/yaml-options/
+impure: true
