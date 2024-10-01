@@ -20,7 +20,7 @@
                        :depends [build:uberjar]
                        :task (tasks/demo-pod-uberjar)}
          deploy:clojars {:doc "Deploy the pod to Clojars"
-                         :depends [build:native]
+                         :depends [build:uberjar]
                          :task (clojure "-T:build deploy")}
          deps:audit {:doc "Audit all dependencies declared in deps.edn"
                      :task (clojure "-M:clj-nvd check")}

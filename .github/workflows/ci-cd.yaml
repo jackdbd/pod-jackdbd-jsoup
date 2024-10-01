@@ -204,16 +204,26 @@ jobs:
       - name: 🛎️ Checkout
         uses: actions/checkout@v4
 
-      - name: 🚀 Create GitHub release (TODO)
-        run: echo "Create GitHub release with all the Linux/MacOS/Windows artifacts"
-
       - name: 🔧 Setup Clojure tools
         uses: DeLaGuardo/setup-clojure@12.5
         with:
           cli: 'latest'
+      
+      - name: 📦 Package the pod into a jar
+        run: clojure -T:build jar :snapshot false
 
-      - name: 🌐 Publish to Clojars
+      - name: 🌐 Publish the jar to Clojars
         env:
           CLOJARS_USERNAME: jackdbd
           CLOJARS_PASSWORD: ${{ secrets.CLOJARS_PASSWORD }}
-        run: clojure -T:build deploy
+        run: clojure -T:build deploy :snapshot false
+
+      # TODO: Gather all binaries compiled with GraalVM native-image
+
+      - name: 🚀 Create GitHub release (TODO)
+        run: echo "Create GitHub release with all the Linux/MacOS/Windows artifacts"
+
+      # Babashka pod registry: https://github.com/babashka/pod-registry/
+      # See example here: https://github.com/babashka/pod-registry/blob/master/manifests/retrogradeorbit/bootleg/0.1.9/manifest.edn
+      - name: 🌐 Publish manifest.edn to Babashka pod registry (TODO)
+        run: echo "create zip archives for all architectures (compile the binaries with GraalVM native-image)"

@@ -1,14 +1,10 @@
 # pod-jackdbd-jsoup
 
 ![CI/CD](https://github.com/jackdbd/pod-jackdbd-jsoup/actions/workflows/ci-cd.yaml/badge.svg)
+[![Clojars Project](https://img.shields.io/clojars/v/com.github.jackdbd/pod.jackdbd.jsoup.svg)](https://clojars.org/com.github.jackdbd/pod.jackdbd.jsoup)
+[![Clojars Project](https://img.shields.io/clojars/v/com.github.jackdbd/pod.jackdbd.jsoup.svg?include_prereleases)](https://clojars.org/com.github.jackdbd/pod.jackdbd.jsoup)
 
-<!-- [![Clojars Project](https://img.shields.io/clojars/v/degree9/featherscript.svg)](https://clojars.org/com.github.jackdbd/pod.jackdbd.jsoup) -->
-
-<!-- [![Dependencies Status](https://versions.deps.co/degree9/featherscript/status.svg)](https://versions.deps.co/degree9/featherscript) -->
-
-<!-- [![Downloads](https://versions.deps.co/degree9/featherscript/downloads.svg)](https://versions.deps.co/degree9/featherscript) -->
-
-Babashka pod for HTML parsing with [jsoup](https://jsoup.org/).
+Babashka pod for parsing HTML with [jsoup](https://jsoup.org/).
 
 ## Setup
 
@@ -16,15 +12,21 @@ The developer environment for this project is declared using [devenv](https://gi
 
 This project is managed with [neil](https://github.com/babashka/neil) and [Babashka tasks](https://book.babashka.org/#tasks).
 
-## Package the pod into an uberjar
+## Compile the pod
+
+### JAR
 
 ```sh
-clj -T:build uber
-# or, in alternative:
-bb build:uberjar
+clj -T:build jar :snapshot false
 ```
 
-## Compile the pod into an executable binary
+### Uber-JAR
+
+```sh
+clj -T:build uber :snapshot false
+```
+
+### Executable binary
 
 If you are on Linux, you can compile a statically-linked binary with the following command, which uses GraalVM native-image with [musl](https://musl.libc.org/) support.
 
@@ -56,3 +58,18 @@ Run all tests
 ```sh
 clj -X:test
 ```
+
+## Upgrade version
+
+Use `neil` to update the version in `deps.edn`. Here are a few examples:
+
+```sh
+neil version set 0.1.0
+neil version patch
+neil version minor
+```
+
+These commands:
+
+- Create a Git commit and tag (this can be bypassed with `--no-tag`)
+- Require the working directory to be clean (this can be bypassed with `--force`)
