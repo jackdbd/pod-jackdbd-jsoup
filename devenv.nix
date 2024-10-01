@@ -32,6 +32,8 @@
       clojars_secrets = builtins.fromJSON clojars_file;
     in
       clojars_secrets.deploy_token;
+
+    GH_TOKEN = builtins.readFile "/run/secrets/github-tokens/semantic_release_bot";
   };
 
   languages = {
