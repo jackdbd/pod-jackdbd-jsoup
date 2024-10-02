@@ -177,7 +177,7 @@ jobs:
       - name: Copy the uberjar and the binary to the target directory
         run: |
           mkdir target
-          cp ${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar target/${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar
+          cp ${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar target/
           cp ${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone target/${{ env.POD_NAME }}
 
       - name: ⬆️ Upload the x86_64 Linux binary
@@ -253,7 +253,7 @@ jobs:
       - name: Copy the uberjar and the binary to the target directory
         run: |
           mkdir target
-          cp ${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar target/${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar
+          cp ${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar target/
           cp ${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone target/${{ env.POD_NAME }}
 
       - name: ⬆️ Upload the aarch64 macOS binary
@@ -363,16 +363,24 @@ jobs:
           cli: 'latest'
           bb: 'latest'
 
+      - name: ⬇️ Download uberjar
+        uses: actions/download-artifact@v4
+        with:
+          name: uberjar
+
+      - name: Copy the uberjar to the target directory
+        run: |
+          mkdir target
+          cp ${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar target/
+
       - name: 🌐 Publish to Clojars
         env:
           CLOJARS_USERNAME: jackdbd
           CLOJARS_PASSWORD: ${{ secrets.CLOJARS_PASSWORD }}
         run: |
           if [ -n "${SNAPSHOT_SUFFIX}" ]; then
-            clojure -T:build uber :snapshot-suffix ${{ env.SNAPSHOT_SUFFIX }}
             clojure -T:build deploy :snapshot-suffix ${{ env.SNAPSHOT_SUFFIX }}
           else
-            clojure -T:build uber
             clojure -T:build deploy
           fi
 
@@ -394,9 +402,6 @@ jobs:
           name: windows-latest-x86_64-binary
           path: windows-latest-x86_64
 
-      # Troubleshooting: let's see if we have actually downloaded everything
-      # - run: ls -R
-
       - name: 📦 Create zip archives for all binaries compiled with GraalVM native-image
         run: |
           pushd . && cd ubuntu-latest-x86_64 && zip "${{ env.POD_NAME }}-${{ env.POD_VERSION }}-ubuntu-latest-x86_64.zip" "pod-jackdbd-jsoup" && popd
@@ -406,7 +411,7 @@ jobs:
           mv macos-latest-aarch64/${{ env.POD_NAME }}-${{ env.POD_VERSION }}-macos-latest-aarch64.zip .
           mv windows-latest-x86_64/${{ env.POD_NAME }}-${{ env.POD_VERSION }}-windows-latest-x86_64.zip .
 
-      # Troubleshooting: let's see if we have actually created all zip archives and moved them to the correct place
+      # Troubleshooting: let's see if we have every assets we want to include in the GitHub release
       - run: ls -R
 
       # https://github.com/marketplace/actions/gh-release
@@ -457,7 +462,7 @@ jobs:
           echo "Here is the manifest.edn generated"
           cat manifest.edn
 
-      - name: ⬆️ Upload manifest.edn (TODO Download it and make a PR on Babashka pod registry?)
+      - name: ⬆️ Upload manifest.edn (TODO Download it and make a PR to Babashka pod registry?)
         uses: actions/upload-artifact@v4
         with:
           name: manifest-edn

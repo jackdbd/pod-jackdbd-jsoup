@@ -46,6 +46,11 @@ At the moment it seems `neil version` creates a commit but not a tag. You will h
 git tag -a v0.1.2 -m "Version 0.1.2"
 ```
 
+```sh
+bb bump:patch
+bb tag
+```
+
 ### Create manifest.edn
 
 ```sh

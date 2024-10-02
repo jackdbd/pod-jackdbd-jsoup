@@ -3,6 +3,7 @@
  :paths ["bb" "src"]
  :tasks {:requires
          ([clojure.edn :as edn]
+          [clojure.string :as str]
           [tasks])
 
          build:binary
@@ -25,13 +26,15 @@
             (clojure "-T:build uber :snapshot-suffix" (keyword snapshot-suffix))
             (clojure "-T:build uber"))}
 
+         bump:patch
+         {:doc "Bump patch version" :task (shell "neil version patch")}
+
          clean
          {:doc "Clean all compilation artifacts (e.g. jars, binaries)"
           :task (shell "rm -rf target/")}
 
          cp
-         {:doc "Print the classpath"
-          :task (tasks/print-classpath)}
+         {:doc "Print the classpath" :task (tasks/print-classpath)}
 
          deploy:clojars
          {:doc "Deploy the pod to Clojars"
@@ -70,6 +73,17 @@
                       pod-version (:version project)
                       jar-path (format "target/%s-%s-standalone.jar" pod-name pod-version)]
                   (shell "jar --file" jar-path "--list"))}
+
+         tag
+         {:doc "Create an annotated git tag if previous commit was a version commit (e.g. v1.2.3)"
+          :task (let [{:keys [out]} (shell {:out :string} "git log --format=%B -n 1")
+                      commit-msg (str/trim-newline out)]
+                  ;; (prn "parts" (str/split cleaned #"\.")) ;; can't use regex literals in EDN
+                  (if (str/includes? commit-msg "v0")
+                    (let [cmd (format "git tag --annotate %s --message %s" commit-msg commit-msg)]
+                      (shell cmd)
+                      (shell ["echo" (format "Created git annotated tag %s" commit-msg)]))
+                    (shell "echo \"Last commit was not a version commit. No git annotated tag will be created.\"")))}
 
          test
          {:doc "Run all tests"
