@@ -368,19 +368,16 @@ jobs:
         with:
           name: uberjar
 
-      - name: Copy the uberjar to the target directory
-        run: |
-          mkdir target
-          cp ${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar target/
-
       - name: 🌐 Publish to Clojars
         env:
           CLOJARS_USERNAME: jackdbd
           CLOJARS_PASSWORD: ${{ secrets.CLOJARS_PASSWORD }}
         run: |
           if [ -n "${SNAPSHOT_SUFFIX}" ]; then
+            clojure -T:build uber :snapshot-suffix ${{ env.SNAPSHOT_SUFFIX }}
             clojure -T:build deploy :snapshot-suffix ${{ env.SNAPSHOT_SUFFIX }}
           else
+            clojure -T:build uber
             clojure -T:build deploy
           fi
 

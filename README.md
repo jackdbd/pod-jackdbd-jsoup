@@ -40,16 +40,14 @@ A few things to keep in mind about `neil version`:
 - it creates a Git commit and tag (this can be bypassed with `--no-tag`)
 - it requires the working directory to be clean (this can be bypassed with `--force`)
 
-At the moment it seems `neil version` creates a commit but not a tag. You will have to manually create an **annotated** tag. Here is an example:
-
-```sh
-git tag -a v0.1.2 -m "Version 0.1.2"
-```
+At the moment `neil version` creates a git commit but fails to create a git tag. You can use the following commands instead.
 
 ```sh
 bb bump:patch
 bb tag
 ```
+
+These commands bump the patch version and create an annotated tag.
 
 ### Create manifest.edn
 
