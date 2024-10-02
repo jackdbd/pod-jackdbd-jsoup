@@ -5,37 +5,19 @@
 
 Babashka pod for parsing HTML with [jsoup](https://jsoup.org/).
 
-## Setup
+## How to use it?
+
+See [examples/jsoup.bb](./examples/jsoup.bb).
+
+## Development
 
 The developer environment for this project is declared using [devenv](https://github.com/cachix/devenv).
 
-This project is managed with [neil](https://github.com/babashka/neil) and [Babashka tasks](https://book.babashka.org/#tasks).
+This project is managed with [neil](https://github.com/babashka/neil) and [Babashka tasks](https://book.babashka.org/#tasks). You can use `bb tasks` to view all available tasks.
 
-## Compile the pod
+### Linux binary
 
-### JAR
-
-```sh
-clj -T:build jar
-```
-
-### Uber-JAR
-
-```sh
-clj -T:build uber
-```
-
-### Executable binary
-
-If you are on Linux, you can compile a statically-linked binary with the following command, which uses GraalVM native-image with [musl](https://musl.libc.org/) support.
-
-```sh
-clj -T:build uber && ./script/compile.sh
-
-# or, in alternative, just run the following command:
-bb build:native
-```
-
+If you are on Linux, you can compile a statically-linked binary using `bb build:binary`.
 Double check that the binary is statically linked.
 
 ```sh
@@ -43,15 +25,7 @@ ldd target/pod-jackdbd-jsoup
 objdump --dynamic-syms target/pod-jackdbd
 ```
 
-## Tests
-
-Run all tests
-
-```sh
-clj -X:test
-```
-
-## Upgrade version
+### Upgrade version
 
 Use `neil` to update the version in `deps.edn`. Here are a few examples:
 
@@ -61,7 +35,7 @@ neil version patch
 neil version minor
 ```
 
-These `neil` commands:
+A few things to keep in mind about `neil version`:
 
-- Create a Git commit and tag (this can be bypassed with `--no-tag`)
-- Require the working directory to be clean (this can be bypassed with `--force`)
+- it creates a Git commit and tag (this can be bypassed with `--no-tag`)
+- it requires the working directory to be clean (this can be bypassed with `--force`)

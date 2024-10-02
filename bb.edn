@@ -6,21 +6,23 @@
 
          build:binary
          {:doc "Compile the pod into a statically-linked binary with GraalVM native-image (Linux only)"
-          :depends [build:uberjar]
+          :depends [build:uber]
           :task (shell "script/compile.sh")}
 
          build:jar
          {:doc "Compile the the pod into a jar"
           :depends [clean]
-          :task (let [snapshot (System/getenv "SNAPSHOT")]
-                  (clojure "-T:build jar :snapshot" snapshot))}
+          :task (if-let [snapshot-suffix (System/getenv "SNAPSHOT_SUFFIX")]
+                  (clojure "-T:build jar :snapshot-suffix" (keyword snapshot-suffix))
+                  (clojure "-T:build jar"))}
 
-         build:uberjar
+         build:uber
          {:doc "Compile the the pod into an uberjar"
           :depends [clean]
           :task
-          (let [snapshot (System/getenv "SNAPSHOT")]
-            (clojure "-T:build uber :snapshot" snapshot))}
+          (if-let [snapshot-suffix (System/getenv "SNAPSHOT_SUFFIX")]
+            (clojure "-T:build uber :snapshot-suffix" (keyword snapshot-suffix))
+            (clojure "-T:build uber"))}
 
          clean
          {:doc "Clean all compilation artifacts (e.g. jars, binaries)"
@@ -32,10 +34,11 @@
 
          deploy:clojars
          {:doc "Deploy the pod to Clojars"
-          :depends [build:uberjar]
+          :depends [build:uber]
           :task
-          (let [snapshot (System/getenv "SNAPSHOT")]
-            (clojure "-T:build deploy :snapshot" snapshot))}
+          (if-let [snapshot-suffix (System/getenv "SNAPSHOT_SUFFIX")]
+            (clojure "-T:build deploy :snapshot-suffix" (keyword snapshot-suffix))
+            (clojure "-T:build deploy"))}
 
          deps:audit
          {:doc "Audit all dependencies declared in deps.edn"
@@ -52,7 +55,7 @@
 
          list:uberjar
          {:doc "List the contents of the uberjar"
-          :depends [build:uberjar]
+          :depends [build:uber]
           :task (let [project (-> (edn/read-string (slurp "deps.edn")) :aliases :neil :project)
                       pod-name "pod.jackdbd.jsoup"
                       pod-version (:version project)

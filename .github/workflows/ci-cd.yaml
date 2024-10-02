@@ -20,8 +20,6 @@ env:
   OPTIMIZATION_LEVEL: '-O2'
   POD_ID: pod.jackdbd.jsoup
   POD_NAME: pod-jackdbd-jsoup
-  # TODO: maybe create a snapshot build when the branch is not main (e.g. canary)
-  SNAPSHOT: "false"
 
 jobs:
   build-uberjar:
@@ -34,10 +32,23 @@ jobs:
   
     outputs:
       pod_version: ${{ steps.set_pod_version.outputs.pod_version }}
+      snapshot_suffix: ${{ steps.set_snapshot_suffix.outputs.snapshot_suffix }}
   
     steps:
       - name: 🛎️ Checkout
         uses: actions/checkout@v4
+
+      - name: Set SNAPSHOT_SUFFIX (environment variable) and snapshot_suffix (job output)
+        id: set_snapshot_suffix
+        # https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/store-information-in-variables#default-environment-variables
+        run: |
+          if [ "${{ github.ref }}" != "refs/heads/main" ]; then
+            echo "SNAPSHOT_SUFFIX=${GITHUB_SHA}" >> $GITHUB_ENV
+          else
+            echo "SNAPSHOT_SUFFIX=" >> $GITHUB_ENV
+          fi
+          echo "snapshot_suffix=$SNAPSHOT_SUFFIX" >> $GITHUB_OUTPUT
+          echo "SNAPSHOT_SUFFIX is $SNAPSHOT_SUFFIX"
 
       # https://github.com/marketplace/actions/github-action-for-graalvm
       - name: 🔧 Setup GraalVM
@@ -70,26 +81,30 @@ jobs:
           key: cljdeps-${{ hashFiles('deps.edn', 'bb.edn') }}
           restore-keys: cljdeps-
 
-      # TODO: At the moment POD_VERSION is correct only for "standard" builds,
-      # but not for "snapshot" builds.
-      # Problem: In build.clj I am using the clojure.tools.build.api/git-count-revs
-      # function to generate the snapshot version tag. But that only works in
-      # Clojure, not Babashka.
-      # Solution: I should propably replace it with the same function from this fork:
-      # https://github.com/babashka/tools.bbuild
       # Example of an uberjar of a standard release:
-      # pod.jackdbd.jsoup-0.1.1-standalone.jar
+      # pod.jackdbd.jsoup-0.1.2-standalone.jar
       # Example of an uberjar of a snapshot release:
-      # pod.jackdbd.jsoup-0.1.1-21-SNAPSHOT-standalone.jar
+      # pod.jackdbd.jsoup-0.1.2-345-SNAPSHOT-standalone.jar
       - name: Set POD_VERSION (environment variable) and pod_version (job output)
         id: set_pod_version
         run: |
-          POD_VERSION=$(bb -e '(-> (slurp "deps.edn") edn/read-string :aliases :neil :project :version)' | tr -d '"')
+          PROJECT_VERSION=$(bb -e '(-> (slurp "deps.edn") edn/read-string :aliases :neil :project :version)' | tr -d '"')
+          if [ -z "${SNAPSHOT_SUFFIX}" ]; then
+            POD_VERSION=$PROJECT_VERSION
+          else
+            POD_VERSION="${PROJECT_VERSION}-${SNAPSHOT_SUFFIX}"
+          fi
           echo "POD_VERSION=$POD_VERSION" >> $GITHUB_ENV
           echo "pod_version=$POD_VERSION" >> $GITHUB_OUTPUT
+          echo "POD_VERSION is $POD_VERSION"
       
       - name: 📦 Compile pod into an uberjar
-        run: clojure -T:build uber :snapshot ${{ env.SNAPSHOT }}
+        run: |
+          if [ -n "${SNAPSHOT_SUFFIX}" ]; then
+            clojure -T:build uber :snapshot-suffix ${{ env.SNAPSHOT_SUFFIX }}
+          else
+            clojure -T:build uber
+          fi
   
       - name: ⬆️ Upload uberjar
         uses: actions/upload-artifact@v4
@@ -104,6 +119,7 @@ jobs:
 
     env:
       POD_VERSION: ${{ needs.build-uberjar.outputs.pod_version }}
+      SNAPSHOT_SUFFIX: ${{ needs.build-uberjar.outputs.snapshot_suffix }}
 
     steps:
       - name: 🛎️ Checkout
@@ -332,6 +348,7 @@ jobs:
     
     env:
       POD_VERSION: ${{ needs.build-uberjar.outputs.pod_version }}
+      SNAPSHOT_SUFFIX: ${{ needs.build-uberjar.outputs.snapshot_suffix }}
 
     permissions:
       contents: write
@@ -346,23 +363,18 @@ jobs:
           cli: 'latest'
           bb: 'latest'
 
-      # - name: ⬇️ Download uberjar
-      #   uses: actions/download-artifact@v4
-      #   with:
-      #     name: uberjar
-
-      # - name: Copy the uberjar to the target directory
-      #   run: |
-      #     mkdir target
-      #     cp ${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar target/${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar
-  
       - name: 🌐 Publish to Clojars
         env:
           CLOJARS_USERNAME: jackdbd
           CLOJARS_PASSWORD: ${{ secrets.CLOJARS_PASSWORD }}
         run: |
-          clojure -T:build uber :snapshot ${{ env.SNAPSHOT }}
-          clojure -T:build deploy :snapshot ${{ env.SNAPSHOT }}
+          if [ -n "${SNAPSHOT_SUFFIX}" ]; then
+            clojure -T:build uber :snapshot-suffix ${{ env.SNAPSHOT_SUFFIX }}
+            clojure -T:build deploy :snapshot-suffix ${{ env.SNAPSHOT_SUFFIX }}
+          else
+            clojure -T:build uber
+            clojure -T:build deploy
+          fi
 
       - name: ⬇️ Download x86_64 Linux binary
         uses: actions/download-artifact@v4

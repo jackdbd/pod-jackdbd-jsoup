@@ -2,24 +2,24 @@
   "pod.jackdbd.jsoup's build script.
    
    clojure -T:build jar
-   clojure -T:build jar :snapshot true
    clojure -T:build uber
-   clojure -T:build uber :snapshot true
+   clojure -T:build uber :snapshot-prefix :123-SNAPSHOT
    clojure -T:build deploy
-   clojure -T:build deploy :snapshot true
+   clojure -T:build deploy :snapshot-prefix :123-SNAPSHOT
 
    For more information, run:
-
-  clojure -A:deps -T:build help/doc"
+   
+   clojure -A:deps -T:build help/doc"
   (:require [clojure.tools.build.api :as b]
             [clojure.edn :as edn]
+            [clojure.pprint :refer [pprint]]
             [deps-deploy.deps-deploy :as dd]))
+
+;; The clojure.tools.build.api library works only in Clojure, not Babashka.
+;; Consider replacing it with this fork https://github.com/babashka/tools.bbuild
 
 (def project (-> (edn/read-string (slurp "deps.edn")) :aliases :neil :project))
 (def lib (:name project))
-(def release-version (:version project))
-;; https://stackoverflow.com/a/5901460/3036129
-(def snapshot-version (format "%s-%s-%s" release-version (b/git-count-revs nil) "SNAPSHOT"))
 
 ;; https://clojure.github.io/tools.build/clojure.tools.build.api.html#var-write-pom
 (defn- pom-template [{:keys [version]}]
@@ -39,8 +39,12 @@
     [:developerConnection "scm:git:ssh:git@github.com:jackdbd/pod-jackdbd-jsoup.git"]
     [:tag (str "v" version)]]])
 
+;; What exactly is a Maven Snapshot and why do we need it?
+;; https://stackoverflow.com/a/5901460/3036129
 (defn- shared-config [opts]
-  (let [vers (if (:snapshot opts) snapshot-version release-version)]
+  (let [vers (if (:snapshot-suffix opts)
+               (format "%s-%s" (:version project) (name (:snapshot-suffix opts)))
+               (:version project))]
     (assoc opts
            :basis (b/create-basis {:project "deps.edn"})
            :class-dir "target/classes"
@@ -53,12 +57,13 @@
            :uber-file (format "target/%s-%s-standalone.jar" (name lib) vers)
            :version vers)))
 
-(defn clean [_]
+(defn clean "Remove all compilation artifacts." [_]
   (b/delete {:path "target"}))
 
 (defn jar "Build the JAR." [opts]
   (let [config (shared-config opts)
         {:keys [basis class-dir jar-file lib main pom-data src-dirs target version]} config]
+
     (clean nil)
 
     ;; https://clojure.github.io/tools.build/clojure.tools.build.api.html#var-write-pom
@@ -83,6 +88,7 @@
 (defn uber "Build the uber-JAR." [opts]
   (let [config (shared-config opts)
         {:keys [basis class-dir main pom-data src-dirs target uber-file version]} config]
+
     (clean nil)
 
     (println "\nWriting" (b/pom-path (select-keys config [:lib :class-dir])) "...")
@@ -107,10 +113,17 @@
              :uber-file uber-file})))
 
 (defn deploy "Deploy the uberjar to Clojars." [opts]
+  (println "\nOptions")
+  (pprint opts)
+
   (let [config (shared-config opts)
         {:keys [uber-file]} config
         artifact (b/resolve-path uber-file)
         pom-file (b/pom-path (select-keys config [:lib :class-dir]))]
+
+    (println "\nConfig")
+    (pprint config)
+
     ;; https://github.com/slipset/deps-deploy/blob/master/doc/intro.md
     (dd/deploy {:artifact artifact
                 :installer :remote
@@ -118,8 +131,11 @@
   opts)
 
 (comment
-  (prn (pom-template {:version release-version}))
+  (prn (pom-template {:version (:version project)}))
+
+  (def snapshot-version (format "%s-%s" (:version project) (name (:snapshot-suffix "123-SNAPSHOT"))))
   (prn (pom-template {:version snapshot-version}))
+
   (jar {})
   (uber {})
-  (deploy {}))
+  (deploy {:snapshot-prefix :123-SNAPSHOT}))
