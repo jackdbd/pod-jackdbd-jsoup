@@ -1,8 +1,9 @@
 {:deps {local/deps {:local/root "."}}
  :min-bb-version "1.3.0"
  :paths ["bb" "src"]
- :tasks {:requires ([clojure.edn :as edn]
-                    [tasks])
+ :tasks {:requires
+         ([clojure.edn :as edn]
+          [tasks])
 
          build:binary
          {:doc "Compile the pod into a statically-linked binary with GraalVM native-image (Linux only)"
@@ -43,6 +44,14 @@
          deps:audit
          {:doc "Audit all dependencies declared in deps.edn"
           :task (clojure "-M:clj-nvd check")}
+
+         deps:license
+         {:doc "List the licenses of all the dependencies"
+          :task (shell "neil license list")}
+
+         deps:upgrade:dry
+         {:doc "Print dependencies that would be upgraded"
+          :task (shell "neil dep upgrade --dry-run")}
 
          list:jar
          {:doc "List the contents of the jar"

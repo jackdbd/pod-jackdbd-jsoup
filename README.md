@@ -39,3 +39,22 @@ A few things to keep in mind about `neil version`:
 
 - it creates a Git commit and tag (this can be bypassed with `--no-tag`)
 - it requires the working directory to be clean (this can be bypassed with `--force`)
+
+At the moment it seems `neil version` creates a commit but not a tag. You will have to manually create an **annotated** tag. Here is an example:
+
+```sh
+git tag -a v0.1.2 -m "Version 0.1.2"
+```
+
+### Create manifest.edn
+
+```sh
+bb bb/manifest.bb \
+  --license MIT \
+  --pod-id "com.github.jackdbd/pod.jackdbd.jsoup" \
+  --version 0.1.2 \
+  --uberjar "https://github.com/jackdbd/pod-jackdbd-jsoup/releases/download/v0.1.2/pod-jackdbd-jsoup-0.1.2-ubuntu-latest-x86_64.zip" \
+  --linux-x86_64 "https://github.com/jackdbd/pod-jackdbd-jsoup/releases/download/v0.1.2/pod-jackdbd-jsoup-0.1.2-ubuntu-latest-x86_64.zip" \
+  --macos-aarch64 "https://github.com/jackdbd/pod-jackdbd-jsoup/releases/download/v0.1.2/pod-jackdbd-jsoup-0.1.2-macos-latest-aarch64.zip" \
+  --windows-x86_64 "https://github.com/jackdbd/pod-jackdbd-jsoup/releases/download/v0.1.2/pod-jackdbd-jsoup-0.1.2-windows-latest-x86_64.zip"
+```
