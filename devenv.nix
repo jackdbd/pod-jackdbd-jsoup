@@ -34,6 +34,7 @@
       clojars_secrets.deploy_token;
 
     GH_TOKEN = builtins.readFile "/run/secrets/github-tokens/semantic_release_bot";
+    SNAPSHOT = "true"; # this must be either "true" or "false", not true or false
   };
 
   languages = {

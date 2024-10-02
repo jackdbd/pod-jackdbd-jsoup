@@ -13,6 +13,7 @@
     (println path))
   (println "=== CLASSPATH END ==="))
 
+
 (defn manifest.edn
   "Generates a `manifest.edn` for [Babashka pod registry](https://github.com/babashka/pod-registry/)."
   [{:keys [aarch64-linux

@@ -52,14 +52,12 @@
   (def pod-name (str/replace pod-id #"\." "-"))
   (def pod-version (:version project))
 
-  (def jar-file (format "target/%s-%s.jar" pod-id pod-version))
-  (def uber-file (format "target/%s-%s-standalone.jar" pod-id pod-version))
-  (def exe-file (format "target/%s" pod-name))
-
   ;; Example 1: load the pod compiled as an uberjar
+  (def uber-file (format "target/%s-%s-standalone.jar" pod-id pod-version))
   (pods/load-pod ["java" "-jar" uber-file])
 
   ;; Example 2: load the pod compiled as an executable with GraalVM native-image
+  (def exe-file (format "target/%s" pod-name))
   (pods/load-pod exe-file)
 
   ;; Example 3: load a pod that was published to the Babashka pod registry

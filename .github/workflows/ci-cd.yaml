@@ -20,6 +20,8 @@ env:
   OPTIMIZATION_LEVEL: '-O2'
   POD_ID: pod.jackdbd.jsoup
   POD_NAME: pod-jackdbd-jsoup
+  # TODO: maybe create a snapshot build when the branch is not main (e.g. canary)
+  SNAPSHOT: "false"
 
 jobs:
   build-uberjar:
@@ -68,6 +70,17 @@ jobs:
           key: cljdeps-${{ hashFiles('deps.edn', 'bb.edn') }}
           restore-keys: cljdeps-
 
+      # TODO: At the moment POD_VERSION is correct only for "standard" builds,
+      # but not for "snapshot" builds.
+      # Problem: In build.clj I am using the clojure.tools.build.api/git-count-revs
+      # function to generate the snapshot version tag. But that only works in
+      # Clojure, not Babashka.
+      # Solution: I should propably replace it with the same function from this fork:
+      # https://github.com/babashka/tools.bbuild
+      # Example of an uberjar of a standard release:
+      # pod.jackdbd.jsoup-0.1.1-standalone.jar
+      # Example of an uberjar of a snapshot release:
+      # pod.jackdbd.jsoup-0.1.1-21-SNAPSHOT-standalone.jar
       - name: Set POD_VERSION (environment variable) and pod_version (job output)
         id: set_pod_version
         run: |
@@ -76,7 +89,7 @@ jobs:
           echo "pod_version=$POD_VERSION" >> $GITHUB_OUTPUT
       
       - name: 📦 Compile pod into an uberjar
-        run: clojure -T:build uber
+        run: clojure -T:build uber :snapshot ${{ env.SNAPSHOT }}
   
       - name: ⬆️ Upload uberjar
         uses: actions/upload-artifact@v4
@@ -319,8 +332,6 @@ jobs:
     
     env:
       POD_VERSION: ${{ needs.build-uberjar.outputs.pod_version }}
-      # TODO: maybe create a snapshot release when the branch is not main (e.g. canary)
-      SHOULD_MAKE_SNAPSHOT_RELEASE: true
 
     permissions:
       contents: write
@@ -335,10 +346,23 @@ jobs:
           cli: 'latest'
           bb: 'latest'
 
-      - name: ⬇️ Download uberjar
-        uses: actions/download-artifact@v4
-        with:
-          name: uberjar
+      # - name: ⬇️ Download uberjar
+      #   uses: actions/download-artifact@v4
+      #   with:
+      #     name: uberjar
+
+      # - name: Copy the uberjar to the target directory
+      #   run: |
+      #     mkdir target
+      #     cp ${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar target/${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar
+  
+      - name: 🌐 Publish to Clojars
+        env:
+          CLOJARS_USERNAME: jackdbd
+          CLOJARS_PASSWORD: ${{ secrets.CLOJARS_PASSWORD }}
+        run: |
+          clojure -T:build uber :snapshot ${{ env.SNAPSHOT }}
+          clojure -T:build deploy :snapshot ${{ env.SNAPSHOT }}
 
       - name: ⬇️ Download x86_64 Linux binary
         uses: actions/download-artifact@v4
@@ -361,7 +385,7 @@ jobs:
       # Troubleshooting: let's see if we have actually downloaded everything
       # - run: ls -R
 
-      - name: 📦 Create zip archives
+      - name: 📦 Create zip archives for all binaries compiled with GraalVM native-image
         run: |
           pushd . && cd ubuntu-latest-x86_64 && zip "${{ env.POD_NAME }}-${{ env.POD_VERSION }}-ubuntu-latest-x86_64.zip" "pod-jackdbd-jsoup" && popd
           pushd . && cd macos-latest-aarch64 && zip "${{ env.POD_NAME }}-${{ env.POD_VERSION }}-macos-latest-aarch64.zip" "pod-jackdbd-jsoup" && popd
@@ -383,20 +407,20 @@ jobs:
         with:
           body: |
             This is a release of **${{ env.POD_NAME }}** version `${{ env.POD_VERSION }}`.
+
+            The pod is also [published as an uberjar to Clojars](https://clojars.org/com.github.jackdbd/pod.jackdbd.jsoup).
           draft: true
           fail_on_unmatched_files: true
-          # TODO: add to files: CHANGELOG.md manifest.edn jar? uberjar? pom.xml?
           files: |
-            LICENSE
-            ${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar
-            ${{ env.POD_NAME }}-${{ env.POD_VERSION }}-ubuntu-latest-x86_64.zip
             ${{ env.POD_NAME }}-${{ env.POD_VERSION }}-macos-latest-aarch64.zip
+            ${{ env.POD_NAME }}-${{ env.POD_VERSION }}-ubuntu-latest-x86_64.zip
             ${{ env.POD_NAME }}-${{ env.POD_VERSION }}-windows-latest-x86_64.zip
-          generate_release_notes: false
+          generate_release_notes: false # TODO: decide whether to use this or not
           name: v${{ env.POD_VERSION }}
-          prerelease: true
+          prerelease: true # maybe if SNAPSHOT is true set this to true as well
           tag_name: v${{ env.POD_VERSION }}
 
+      # ATTENTION: the order of `steps.github_release.outputs.assets` depends on the order of the `files` defined in the `github_release` step.
       # https://github.com/marketplace/actions/gh-release#outputs
       - name: 📄 Create manifest.edn for Babashka pod registry
         run: |
@@ -404,15 +428,16 @@ jobs:
           RELEASE_ID=${{ steps.github_release.outputs.id }}
           UPLOAD_URL=${{ steps.github_release.outputs.upload_url }}
           ASSETS=${{ steps.github_release.outputs.assets }}
-          UBERJAR_URL=${{ fromJSON(steps.github_release.outputs.assets)[1].browser_download_url }}
-          UBUNTU_LATEST_x86_64_ZIP_URL=${{ fromJSON(steps.github_release.outputs.assets)[2].browser_download_url }}
-          MACOS_LATEST_AARCH64_ZIP_URL=${{ fromJSON(steps.github_release.outputs.assets)[3].browser_download_url }}
-          WINDOWS_LATEST_x86_64_ZIP_URL=${{ fromJSON(steps.github_release.outputs.assets)[4].browser_download_url }}
+
+          MACOS_LATEST_AARCH64_ZIP_URL=${{ fromJSON(steps.github_release.outputs.assets)[0].browser_download_url }}
+          UBUNTU_LATEST_x86_64_ZIP_URL=${{ fromJSON(steps.github_release.outputs.assets)[1].browser_download_url }}
+          WINDOWS_LATEST_x86_64_ZIP_URL=${{ fromJSON(steps.github_release.outputs.assets)[2].browser_download_url }}
+          
           echo "RELEASE_URL is $RELEASE_URL"
-          echo "UBERJAR_URL is $UBERJAR_URL"
-          echo "UBUNTU_LATEST_x86_64_ZIP_URL is $UBUNTU_LATEST_x86_64_ZIP_URL"
           echo "MACOS_LATEST_AARCH64_ZIP_URL is $MACOS_LATEST_AARCH64_ZIP_URL"
+          echo "UBUNTU_LATEST_x86_64_ZIP_URL is $UBUNTU_LATEST_x86_64_ZIP_URL"
           echo "WINDOWS_LATEST_x86_64_ZIP_URL is $WINDOWS_LATEST_x86_64_ZIP_URL"
+          
           bb bb/manifest.bb --license MIT --pod-id com.github.jackdbd/pod.jackdbd.jsoup --version ${{ env.POD_VERSION }} --uberjar $UBERJAR_URL --linux-x86_64 $UBUNTU_LATEST_x86_64_ZIP_URL --macos-aarch64 $MACOS_LATEST_AARCH64_ZIP_URL --windows-x86_64 $WINDOWS_LATEST_x86_64_ZIP_URL
           echo "Here is the manifest.edn generated"
           cat manifest.edn
@@ -422,13 +447,3 @@ jobs:
         with:
           name: manifest-edn
           path: manifest.edn
-
-      # TODO: Should a pod be published to Clojars as jar or uberjar?
-      - name: 📦 Compile pod into a jar
-        run: clojure -T:build jar :snapshot ${{ env.SHOULD_MAKE_SNAPSHOT_RELEASE }}
-
-      - name: 🌐 Publish the jar to Clojars
-        env:
-          CLOJARS_USERNAME: jackdbd
-          CLOJARS_PASSWORD: ${{ secrets.CLOJARS_PASSWORD }}
-        run: clojure -T:build deploy :snapshot ${{ env.SHOULD_MAKE_SNAPSHOT_RELEASE }}

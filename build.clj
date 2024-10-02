@@ -17,9 +17,9 @@
 
 (def project (-> (edn/read-string (slurp "deps.edn")) :aliases :neil :project))
 (def lib (:name project))
-(def version (:version project))
+(def release-version (:version project))
 ;; https://stackoverflow.com/a/5901460/3036129
-(def snapshot-version (format "%s-%s-%s" version (b/git-count-revs nil) "SNAPSHOT"))
+(def snapshot-version (format "%s-%s-%s" release-version (b/git-count-revs nil) "SNAPSHOT"))
 
 ;; https://clojure.github.io/tools.build/clojure.tools.build.api.html#var-write-pom
 (defn- pom-template [{:keys [version]}]
@@ -40,18 +40,18 @@
     [:tag (str "v" version)]]])
 
 (defn- shared-config [opts]
-  (let [version (if (:snapshot opts) snapshot-version version)]
+  (let [vers (if (:snapshot opts) snapshot-version release-version)]
     (assoc opts
            :basis (b/create-basis {:project "deps.edn"})
            :class-dir "target/classes"
-           :jar-file (format "target/%s-%s.jar" (name lib) version)
+           :jar-file (format "target/%s-%s.jar" (name lib) vers)
            :lib lib
            :main 'pod.jackdbd.jsoup
-           :pom-data (pom-template {:version version})
+           :pom-data (pom-template {:version vers})
            :src-dirs ["src"]
            :target "target"
-           :uber-file (format "target/%s-%s-standalone.jar" (name lib) version)
-           :version version)))
+           :uber-file (format "target/%s-%s-standalone.jar" (name lib) vers)
+           :version vers)))
 
 (defn clean [_]
   (b/delete {:path "target"}))
@@ -61,8 +61,8 @@
         {:keys [basis class-dir jar-file lib main pom-data src-dirs target version]} config]
     (clean nil)
 
-    (println "\nWriting" (b/pom-path (select-keys config [:lib :class-dir])) "...")
     ;; https://clojure.github.io/tools.build/clojure.tools.build.api.html#var-write-pom
+    (println "\nWriting" (b/pom-path (select-keys config [:lib :class-dir])) "...")
     (b/write-pom {:basis basis
                   :class-dir class-dir
                   :lib lib
@@ -82,8 +82,17 @@
 
 (defn uber "Build the uber-JAR." [opts]
   (let [config (shared-config opts)
-        {:keys [basis class-dir main uber-file]} config]
+        {:keys [basis class-dir main pom-data src-dirs target uber-file version]} config]
     (clean nil)
+
+    (println "\nWriting" (b/pom-path (select-keys config [:lib :class-dir])) "...")
+    (b/write-pom {:basis basis
+                  :class-dir class-dir
+                  :lib lib
+                  :pom-data pom-data
+                  :src-dirs src-dirs
+                  :target target
+                  :version version})
 
     (println "\nCopying src and resources ...")
     (b/copy-dir {:src-dirs ["src" "resources"] :target-dir class-dir})
@@ -97,12 +106,11 @@
              :main main
              :uber-file uber-file})))
 
-(defn deploy "Deploy the JAR to Clojars." [opts]
+(defn deploy "Deploy the uberjar to Clojars." [opts]
   (let [config (shared-config opts)
-        {:keys [jar-file]} config
-        artifact (b/resolve-path jar-file)
+        {:keys [uber-file]} config
+        artifact (b/resolve-path uber-file)
         pom-file (b/pom-path (select-keys config [:lib :class-dir]))]
-
     ;; https://github.com/slipset/deps-deploy/blob/master/doc/intro.md
     (dd/deploy {:artifact artifact
                 :installer :remote
@@ -110,7 +118,7 @@
   opts)
 
 (comment
-  (prn (pom-template {:version version}))
+  (prn (pom-template {:version release-version}))
   (prn (pom-template {:version snapshot-version}))
   (jar {})
   (uber {})

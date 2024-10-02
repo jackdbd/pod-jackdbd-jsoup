@@ -2,14 +2,10 @@
 (ns manifest
   (:require 
    [babashka.cli :as cli]
-   [babashka.fs :as fs]
    [utils :refer [format-edn]]
    [clojure.string :as str]))
 
-(defn dir-exists?
-  [path]
-  (fs/directory? path))
-
+;; Show help with `bb bb/manifest.bb --help` (or with -h, :help, :h)
 (defn show-help
   [spec]
   (cli/format-opts (merge spec {:order (vec (keys (:spec spec)))})))
@@ -18,13 +14,8 @@
   {:spec
    {:license {:desc "Pod license (e.g. MIT)"
               :require true}
-    :pod-id {:desc "Pod ID (e.g. pod.jackdbd.jsoup)"
+    :pod-id {:desc "Pod ID (e.g. com.github.jackdbd/pod.jackdbd.jsoup)"
              :require true}
-    :dir {:desc "Directory name to do stuff"
-          :alias :d
-          :validate dir-exists?}
-    :some-flag {:coerce :boolean
-                :desc "I am just a flag"}
     :linux-x86_64 {:desc "URL where the x86_64 Linux binary is hosted (GitHub release)"}
     :macos-aarch64 {:desc "URL where the AArch64 macOS binary is hosted (GitHub release)"}
     :windows-x86_64 {:desc "URL where the x86_64 Windows binary is hosted (GitHub release)"}
@@ -33,7 +24,7 @@
               :require true}}
    :error-fn
    (fn [{:keys [spec type cause msg option opts] :as data}]
-     (when (and (= :org.babashka/cli type) (not (:help opts)))
+     (when (and (= :org.babashka/cli type) (not (or (:help opts) (:h opts))))
        (case cause
          :require (do
                     (println (format "Missing required argument: %s\n" option))
