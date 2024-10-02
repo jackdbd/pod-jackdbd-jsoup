@@ -75,7 +75,7 @@ jobs:
           echo "POD_VERSION=$POD_VERSION" >> $GITHUB_ENV
           echo "pod_version=$POD_VERSION" >> $GITHUB_OUTPUT
       
-      - name: 📦 Package the pod into an uberjar
+      - name: 📦 Compile pod into an uberjar
         run: clojure -T:build uber
   
       - name: ⬆️ Upload uberjar
@@ -319,6 +319,8 @@ jobs:
     
     env:
       POD_VERSION: ${{ needs.build-uberjar.outputs.pod_version }}
+      # TODO: maybe create a snapshot release when the branch is not main (e.g. canary)
+      SHOULD_MAKE_SNAPSHOT_RELEASE: true
 
     permissions:
       contents: write
@@ -372,12 +374,17 @@ jobs:
       - run: ls -R
 
       # https://github.com/marketplace/actions/gh-release
+      # See also this workflow that uses the bruceadams/get-release action:
+      # https://github.com/juji-io/datalevin/blob/master/.github/workflows/release.binaries.yml
+      # https://github.com/bruceadams/get-release
       - name: 🚀 Create GitHub release
         uses: softprops/action-gh-release@v2
+        id: github_release
         with:
           body: |
-            This is a release of ${{ env.POD_NAME }} version ${{ env.POD_VERSION }}.
+            This is a release of **${{ env.POD_NAME }}** version `${{ env.POD_VERSION }}`.
           draft: true
+          fail_on_unmatched_files: true
           # TODO: add to files: CHANGELOG.md manifest.edn jar? uberjar? pom.xml?
           files: |
             LICENSE
@@ -385,16 +392,43 @@ jobs:
             ${{ env.POD_NAME }}-${{ env.POD_VERSION }}-ubuntu-latest-x86_64.zip
             ${{ env.POD_NAME }}-${{ env.POD_VERSION }}-macos-latest-aarch64.zip
             ${{ env.POD_NAME }}-${{ env.POD_VERSION }}-windows-latest-x86_64.zip
+          generate_release_notes: false
+          name: v${{ env.POD_VERSION }}
+          prerelease: true
+          tag_name: v${{ env.POD_VERSION }}
 
-      - name: 📄 Write manifest.edn for Babashka pod registry (TODO)
-        run: bb manifest.edn
+      # https://github.com/marketplace/actions/gh-release#outputs
+      - name: 📄 Create manifest.edn for Babashka pod registry
+        run: |
+          RELEASE_URL=${{ steps.github_release.outputs.url }}
+          RELEASE_ID=${{ steps.github_release.outputs.id }}
+          UPLOAD_URL=${{ steps.github_release.outputs.upload_url }}
+          ASSETS=${{ steps.github_release.outputs.assets }}
+          UBERJAR_URL=${{ fromJSON(steps.github_release.outputs.assets)[1].browser_download_url }}
+          UBUNTU_LATEST_x86_64_ZIP_URL=${{ fromJSON(steps.github_release.outputs.assets)[2].browser_download_url }}
+          MACOS_LATEST_AARCH64_ZIP_URL=${{ fromJSON(steps.github_release.outputs.assets)[3].browser_download_url }}
+          WINDOWS_LATEST_x86_64_ZIP_URL=${{ fromJSON(steps.github_release.outputs.assets)[4].browser_download_url }}
+          echo "RELEASE_URL is $RELEASE_URL"
+          echo "UBERJAR_URL is $UBERJAR_URL"
+          echo "UBUNTU_LATEST_x86_64_ZIP_URL is $UBUNTU_LATEST_x86_64_ZIP_URL"
+          echo "MACOS_LATEST_AARCH64_ZIP_URL is $MACOS_LATEST_AARCH64_ZIP_URL"
+          echo "WINDOWS_LATEST_x86_64_ZIP_URL is $WINDOWS_LATEST_x86_64_ZIP_URL"
+          bb bb/manifest.bb --license MIT --pod-id com.github.jackdbd/pod.jackdbd.jsoup --version ${{ env.POD_VERSION }} --uberjar $UBERJAR_URL --linux-x86_64 $UBUNTU_LATEST_x86_64_ZIP_URL --macos-aarch64 $MACOS_LATEST_AARCH64_ZIP_URL --windows-x86_64 $WINDOWS_LATEST_x86_64_ZIP_URL
+          echo "Here is the manifest.edn generated"
+          cat manifest.edn
 
-      - name: 📦 Package the pod into a jar
-        run: clojure -T:build jar :snapshot false
+      - name: ⬆️ Upload manifest.edn (TODO Download it and make a PR on Babashka pod registry?)
+        uses: actions/upload-artifact@v4
+        with:
+          name: manifest-edn
+          path: manifest.edn
 
-      # TODO: maybe create a snapshot release when the branch is not main (e.g. canary)
+      # TODO: Should a pod be published to Clojars as jar or uberjar?
+      - name: 📦 Compile pod into a jar
+        run: clojure -T:build jar :snapshot ${{ env.SHOULD_MAKE_SNAPSHOT_RELEASE }}
+
       - name: 🌐 Publish the jar to Clojars
         env:
           CLOJARS_USERNAME: jackdbd
           CLOJARS_PASSWORD: ${{ secrets.CLOJARS_PASSWORD }}
-        run: clojure -T:build deploy :snapshot false
+        run: clojure -T:build deploy :snapshot ${{ env.SHOULD_MAKE_SNAPSHOT_RELEASE }}

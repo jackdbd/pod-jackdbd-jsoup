@@ -28,6 +28,9 @@ target/
 # pre-commit configuration created by devenv
 .pre-commit-config.yaml
 
+# manifest for Babashka pod registry
+manifest.edn
+
 # GraalVM error compilation reports
 reports/
 # GraalVM error reports

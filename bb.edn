@@ -4,15 +4,20 @@
  :tasks {:requires ([clojure.edn :as edn]
                     [tasks])
 
-         build:native
-         {:doc "Compile the pod into a statically-linked binary with GraalVM native-image"
+         build:binary
+         {:doc "Compile the pod into a statically-linked binary with GraalVM native-image (Linux only)"
           :depends [build:uberjar]
           :task (shell "script/compile.sh")}
 
-         build:uberjar
-         {:doc "Package the the pod into an uberjar"
+         build:jar
+         {:doc "Compile the the pod into a jar"
           :depends [clean]
-          :task (clojure "-T:build uber")}
+          :task (clojure "-T:build jar :snapshot false")}
+
+         build:uberjar
+         {:doc "Compile the the pod into an uberjar"
+          :depends [clean]
+          :task (clojure "-T:build uber :snapshot false")}
 
          clean
          {:doc "Clean all compilation artifacts (e.g. jars, binaries)"
@@ -24,15 +29,24 @@
 
          deploy:clojars
          {:doc "Deploy the pod to Clojars"
-          :depends [build:uberjar]
-          :task (clojure "-T:build deploy")}
+          :depends [build:jar]
+          :task (clojure "-T:build deploy :snapshot false")}
 
          deps:audit
          {:doc "Audit all dependencies declared in deps.edn"
           :task (clojure "-M:clj-nvd check")}
 
+         list:jar
+         {:doc "List the contents of the jar"
+          :depends [build:jar]
+          :task (let [project (-> (edn/read-string (slurp "deps.edn")) :aliases :neil :project)
+                      pod-name "pod.jackdbd.jsoup"
+                      pod-version (:version project)
+                      jar-path (format "target/%s-%s.jar" pod-name pod-version)]
+                  (shell "jar --file" jar-path "--list"))}
+
          list:uberjar
-         {:doc "List the contents of the pod packaged into an uberjar"
+         {:doc "List the contents of the uberjar"
           :depends [build:uberjar]
           :task (let [project (-> (edn/read-string (slurp "deps.edn")) :aliases :neil :project)
                       pod-name "pod.jackdbd.jsoup"
@@ -40,18 +54,16 @@
                       jar-path (format "target/%s-%s-standalone.jar" pod-name pod-version)]
                   (shell "jar --file" jar-path "--list"))}
 
+         ;; bb run manifest.edn
          manifest.edn
          {:doc "Generate manifest.edn for the Babashka pod registry"
-          :task (let [project (-> (edn/read-string (slurp "deps.edn")) :aliases :neil :project)
-                      pod-name "pod.jackdbd.jsoup"
-                      pod-version (:version project)]
-                  (tasks/write-manifest.edn {:license "MIT"
-                                             :version pod-version
-                                             :x86_64-linux "some-github-release-url-linux_x86_64.zip"
-                                             :x86_64-macos "some-github-release-url-macos_x86_64.zip"
-                                             :x86_64-windows "some-github-release-url-windows_x86_64.zip"}))}
+          :task (shell "bb -x manifest/-main --license MIT --name pod.jackdbd.jsoup --version 0.1.10 --uberjar some-URL --linux-x86_64 some-linux-url --macos-aarch64 some-macos-url --windows-x86_64 some-windows-url")}
+
+        ;; Show help with --help, -h, :help, :h
+        ;; bb bb/manifest.bb --help
+        ;; bb bb/manifest.bb --license MIT --pod-id com.github.jackdbd/pod.jackdbd.jsoup --version 0.1.10 --uberjar "some-uberjar-URL" --linux-x86_64 "some-linux-url" --macos-aarch64 "some-macos-url" --windows-x86_64 "some-windows-url" --some-flag
 
          test
          {:doc "Run all tests"
-          ;; :depends [build:native]
+          ;; :depends [build:binary]
           :task (clojure "-X:test")}}}

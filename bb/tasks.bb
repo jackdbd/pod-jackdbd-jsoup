@@ -1,15 +1,10 @@
 (ns tasks
-  (:require [babashka.classpath :refer [get-classpath split-classpath]]
-            [babashka.http-client :as http]
-            [babashka.pods :as pods]
-            [clojure.edn :as edn]
-            [clojure.string :as str]))
-
-(def project (-> (edn/read-string (slurp "deps.edn")) :aliases :neil :project))
-(def pod-id (:name project))
-(def pod-name (name pod-id))
-(def pod-version (:version project))
-(def uber-file (format "target/%s-%s-standalone.jar" pod-name pod-version))
+  (:require
+   [babashka.classpath :refer [get-classpath split-classpath]]
+   [babashka.http-client :as http]
+   [babashka.pods :as pods]
+   [clojure.edn :as edn]
+   [utils :refer [format-edn]]))
 
 (defn print-classpath []
   (println "=== CLASSPATH BEGIN ===")
@@ -26,10 +21,12 @@
            amd64-macos
            amd64-windows
            license
+           pod-id
            version
            x86_64-linux
            x86_64-macos]}]
-  (let [artifacts (cond-> []
+  (let [pod-name (name pod-id)
+        artifacts (cond-> []
                     aarch64-linux (conj {:os/arch "aarch64"
                                          :os/name "Linux.*"
                                          :artifact/url aarch64-linux
@@ -66,21 +63,11 @@
      :pod/version version
      :pod/artifacts artifacts}))
 
-(defn format-edn [data]
-  (cond
-    ;; If the data is a map, format each key-value pair manually
-    (map? data) (str "{" (str/join " " (for [[k v] data]
-                                         (str (pr-str k) " " (format-edn v))))
-                     "}")
-
-    ;; If the data is a vector, format each element manually
-    (vector? data) (str "[" (str/join " " (map format-edn data)) "]")
-
-    ;; If the data is a regular value (string, number, keyword, etc.), just return it as a string
-    :else (pr-str data)))
-
 (defn write-manifest.edn [opts]
-  (let [filepath "target/manifest.edn"
+  (prn "*command-line-args*" *command-line-args*)
+  ;; (when *command-line-args*
+  ;;   (prn "got CLI args" *command-line-args*))
+  (let [filepath "manifest.edn"
         manifest-data (manifest.edn opts)
         edn-content (format-edn manifest-data)]
     (spit filepath edn-content)
@@ -90,6 +77,13 @@
 
 (comment
   (print-classpath)
+
+  (def project (-> (edn/read-string (slurp "deps.edn")) :aliases :neil :project))
+  (def pod-id (:name project))
+  (def pod-name (name pod-id))
+  (def pod-version (:version project))
+
+  (def uber-file (format "target/%s-%s-standalone.jar" pod-name pod-version))
 
   ;; It seems these functions cannot be defined outside of a rich comment block,
   ;; otherwise the Babashka task runner cannot run ANY task. I guess it's due to
@@ -133,11 +127,13 @@
                  :amd64-windows amd64-windows
                  :x86_64-linux x86_64-linux
                  :license "MIT"
+                 :pod-id pod-id
                  :version pod-version})
-  
+
   (write-manifest.edn {:aarch64-macos aarch64-macos
                        :amd64-windows amd64-windows
                        :x86_64-linux x86_64-linux
                        :license "MIT"
+                       :pod-id pod-id
                        :version pod-version})
   )
