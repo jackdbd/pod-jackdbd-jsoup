@@ -10,10 +10,11 @@
    For more information, run:
    
    clojure -A:deps -T:build help/doc"
-  (:require [clojure.tools.build.api :as b]
-            [clojure.edn :as edn]
-            [clojure.pprint :refer [pprint]]
-            [deps-deploy.deps-deploy :as dd]))
+  (:require
+   [clojure.tools.build.api :as b]
+   [clojure.edn :as edn]
+   [clojure.pprint :refer [pprint]]
+   [deps-deploy.deps-deploy :as dd]))
 
 ;; The clojure.tools.build.api library works only in Clojure, not Babashka.
 ;; Consider replacing it with this fork https://github.com/babashka/tools.bbuild

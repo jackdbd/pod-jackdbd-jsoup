@@ -1,6 +1,6 @@
 (ns utils
   (:require
-    [clojure.string :as str]))
+   [clojure.string :as str]))
 
 (defn format-edn [data]
   (cond
