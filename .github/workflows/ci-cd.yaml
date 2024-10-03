@@ -407,7 +407,7 @@ jobs:
           mv windows-latest-x86_64/${{ env.POD_NAME }}-${{ env.POD_VERSION }}-windows-latest-x86_64.zip .
 
       # Troubleshooting: do we have every assets we want to include in the GitHub release?
-      - run: ls -R
+      # - run: ls -R
 
       # https://github.com/marketplace/actions/gh-release
       # See also this workflow that uses the bruceadams/get-release action:
@@ -458,11 +458,18 @@ jobs:
           echo "Here is the manifest.edn generated"
           cat manifest.edn
 
+      - name: 🚀 Add manifest.edn to GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            manifest.edn
+          tag_name: v${{ env.POD_VERSION }}
+
       # With this step the manifest.edn can be downloaded from the GitHub
       # workflow. Then you will need to "register the pod", i.e. open a PR on
       # the Babashka pod registry and commit your manifest.edn there.
-      - name: ⬆️ Upload manifest.edn
-        uses: actions/upload-artifact@v4
-        with:
-          name: manifest-edn
-          path: manifest.edn
+      # - name: ⬆️ Upload manifest.edn
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: manifest-edn
+      #     path: manifest.edn
