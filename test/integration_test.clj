@@ -1,8 +1,9 @@
 (ns integration-test
-  (:require [babashka.pods :as pods]
-            [clojure.edn :as edn]
-            [clojure.string :as str]
-            [clojure.test :refer [deftest is testing]]))
+  (:require
+   [babashka.pods :as pods]
+   [clojure.edn :as edn]
+   [clojure.string :as str]
+   [clojure.test :refer [deftest is testing]]))
 
 (def project (-> (edn/read-string (slurp "deps.edn")) :aliases :neil :project))
 (def pod-id (name (:name project)))

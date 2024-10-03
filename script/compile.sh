@@ -3,17 +3,7 @@ set -euo pipefail
 
 POD_ID=pod.jackdbd.jsoup
 POD_NAME=pod-jackdbd-jsoup
-PROJECT_VERSION=$(bb -e '(-> (slurp "deps.edn") edn/read-string :aliases :neil :project :version)' | tr -d '"')
-
-# If we built an uberjar for a snapshot release, its filename will include a
-# snapshot suffix.
-if [ -z "${SNAPSHOT_SUFFIX}" ]; then
-  POD_VERSION=$PROJECT_VERSION
-else
-  POD_VERSION="${PROJECT_VERSION}-${SNAPSHOT_SUFFIX}"
-fi
-echo "PROJECT_VERSION is $PROJECT_VERSION"
-echo "SNAPSHOT_SUFFIX is $SNAPSHOT_SUFFIX"
+POD_VERSION=$(bb -e '(-> (slurp "deps.edn") edn/read-string :aliases :neil :project :version)' | tr -d '"')
 echo "POD_VERSION is $POD_VERSION"
 
 # https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/store-information-in-variables#default-environment-variables

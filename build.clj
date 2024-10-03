@@ -3,9 +3,7 @@
    
    clojure -T:build jar
    clojure -T:build uber
-   clojure -T:build uber :snapshot-prefix :123-SNAPSHOT
    clojure -T:build deploy
-   clojure -T:build deploy :snapshot-prefix :123-SNAPSHOT
 
    For more information, run:
    
@@ -40,12 +38,8 @@
     [:developerConnection "scm:git:ssh:git@github.com:jackdbd/pod-jackdbd-jsoup.git"]
     [:tag (str "v" version)]]])
 
-;; What exactly is a Maven Snapshot and why do we need it?
-;; https://stackoverflow.com/a/5901460/3036129
 (defn- shared-config [opts]
-  (let [vers (if (:snapshot-suffix opts)
-               (format "%s-%s" (:version project) (name (:snapshot-suffix opts)))
-               (:version project))]
+  (let [vers (:version project)]
     (assoc opts
            :basis (b/create-basis {:project "deps.edn"})
            :class-dir "target/classes"
@@ -134,9 +128,9 @@
 (comment
   (prn (pom-template {:version (:version project)}))
 
-  (def snapshot-version (format "%s-%s" (:version project) (name (:snapshot-suffix "123-SNAPSHOT"))))
+  (def snapshot-version (format "%s-SNAPSHOT" (:version project)))
   (prn (pom-template {:version snapshot-version}))
 
   (jar {})
   (uber {})
-  (deploy {:snapshot-prefix :123-SNAPSHOT}))
+  (deploy {}))

@@ -14,17 +14,12 @@
          build:jar
          {:doc "Compile the the pod into a jar"
           :depends [clean]
-          :task (if-let [snapshot-suffix (System/getenv "SNAPSHOT_SUFFIX")]
-                  (clojure "-T:build jar :snapshot-suffix" (keyword snapshot-suffix))
-                  (clojure "-T:build jar"))}
+          :task (clojure "-T:build jar")}
 
          build:uber
          {:doc "Compile the the pod into an uberjar"
           :depends [clean]
-          :task
-          (if-let [snapshot-suffix (System/getenv "SNAPSHOT_SUFFIX")]
-            (clojure "-T:build uber :snapshot-suffix" (keyword snapshot-suffix))
-            (clojure "-T:build uber"))}
+          :task (clojure "-T:build uber")}
 
          bump:patch
          {:doc "Bump patch version" :task (shell "neil version patch")}
@@ -39,10 +34,7 @@
          deploy:clojars
          {:doc "Deploy the pod to Clojars"
           :depends [build:uber]
-          :task
-          (if-let [snapshot-suffix (System/getenv "SNAPSHOT_SUFFIX")]
-            (clojure "-T:build deploy :snapshot-suffix" (keyword snapshot-suffix))
-            (clojure "-T:build deploy"))}
+          :task (clojure "-T:build deploy")}
 
          deps:audit
          {:doc "Audit all dependencies declared in deps.edn"
