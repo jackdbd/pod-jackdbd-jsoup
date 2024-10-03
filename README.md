@@ -75,13 +75,11 @@ Currently, registering a pod involves two manual steps.
 First, create a `manifest.edn` file for one version of the pod.
 
 ```sh
-VERSION=0.1.4 && \
 bb bb/manifest.bb \
-  --version $VERSION \
-  --uberjar "https://github.com/jackdbd/pod-jackdbd-jsoup/releases/download/v$VERSION/pod-jackdbd-jsoup-$VERSION-ubuntu-latest-x86_64.zip" \
-  --linux-x86_64 "https://github.com/jackdbd/pod-jackdbd-jsoup/releases/download/v$VERSION/pod-jackdbd-jsoup-$VERSION-ubuntu-latest-x86_64.zip" \
-  --macos-aarch64 "https://github.com/jackdbd/pod-jackdbd-jsoup/releases/download/v$VERSION/pod-jackdbd-jsoup-$VERSION-macos-latest-aarch64.zip" \
-  --windows-x86_64 "https://github.com/jackdbd/pod-jackdbd-jsoup/releases/download/v$VERSION/pod-jackdbd-jsoup-$VERSION-windows-latest-x86_64.zip"
+  --uberjar "https://github.com/jackdbd/pod-jackdbd-jsoup/releases/download/v$POD_VERSION/pod-jackdbd-jsoup-$POD_VERSION-ubuntu-latest-x86_64.zip" \
+  --linux-x86_64 "https://github.com/jackdbd/pod-jackdbd-jsoup/releases/download/v$POD_VERSION/pod-jackdbd-jsoup-$POD_VERSION-ubuntu-latest-x86_64.zip" \
+  --macos-aarch64 "https://github.com/jackdbd/pod-jackdbd-jsoup/releases/download/v$POD_VERSION/pod-jackdbd-jsoup-$POD_VERSION-macos-latest-aarch64.zip" \
+  --windows-x86_64 "https://github.com/jackdbd/pod-jackdbd-jsoup/releases/download/v$POD_VERSION/pod-jackdbd-jsoup-$POD_VERSION-windows-latest-x86_64.zip"
 ```
 
 Then, make a PR on Pod registry following [these instructions](https://github.com/babashka/pod-registry?tab=readme-ov-file#registering-a-pod).

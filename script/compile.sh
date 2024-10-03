@@ -3,7 +3,6 @@ set -euo pipefail
 
 POD_ID=pod.jackdbd.jsoup
 POD_NAME=pod-jackdbd-jsoup
-POD_VERSION=$(bb -e '(-> (slurp "deps.edn") edn/read-string :aliases :neil :project :version)' | tr -d '"')
 echo "POD_VERSION is $POD_VERSION"
 
 # https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/store-information-in-variables#default-environment-variables

@@ -22,16 +22,48 @@ env:
   POD_NAME: pod-jackdbd-jsoup
 
 jobs:
+  set-shared-outputs:
+    name: Set shared outputs
+    runs-on: ubuntu-latest
+  
+    outputs:
+      pod_version: ${{ steps.set_outputs.outputs.pod_version }}
+      prerelease: ${{ steps.set_outputs.outputs.prerelease }}
+
+    steps:
+      - name: 🛎️ Checkout
+        uses: actions/checkout@v4
+      
+      - name: 🔧 Setup Babashka
+        uses: DeLaGuardo/setup-clojure@12.5
+        with:
+          bb: 'latest'
+
+      - name: Set job outputs
+        id: set_outputs
+        run: |
+          POD_VERSION=$(bb -e '(-> (slurp "deps.edn") edn/read-string :aliases :neil :project :version)' | tr -d '"')
+          echo "pod_version=$POD_VERSION" >> $GITHUB_OUTPUT
+
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "PRERELEASE=false" >> $GITHUB_ENV
+          else
+            echo "PRERELEASE=true" >> $GITHUB_ENV
+          fi
+          echo "prerelease=$PRERELEASE" >> $GITHUB_OUTPUT
+
+      - name: Log job outputs
+        run: |
+          echo "pod_version is ${{ steps.set_outputs.outputs.pod_version }}"
+          echo "prerelease is ${{ steps.set_outputs.outputs.prerelease }}"
+
   build-uberjar:
     name: Build uberjar
     runs-on: ubuntu-latest
-    # strategy:
-    #   matrix:
-    #     os: [ubuntu-latest, macOS-latest, windows-latest]
-    # runs-on: ${{ matrix.os }}
+    needs: [set-shared-outputs]
   
-    outputs:
-      pod_version: ${{ steps.set_pod_version.outputs.pod_version }}
+    env:
+      POD_VERSION: ${{ needs.set-shared-outputs.outputs.pod_version }}
   
     steps:
       - name: 🛎️ Checkout
@@ -53,7 +85,6 @@ jobs:
         uses: DeLaGuardo/setup-clojure@12.5
         with:
           cli: 'latest' # Clojure CLI based on tools.deps
-          bb: 'latest' # Babashka
       
       # https://github.com/actions/cache
       - name: Cache clojure dependencies
@@ -67,14 +98,6 @@ jobs:
           # key: cljdeps-${{ hashFiles('deps.edn') }}
           key: cljdeps-${{ hashFiles('deps.edn', 'bb.edn') }}
           restore-keys: cljdeps-
-
-      - name: Set POD_VERSION (environment variable) and pod_version (job output)
-        id: set_pod_version
-        run: |
-          POD_VERSION=$(bb -e '(-> (slurp "deps.edn") edn/read-string :aliases :neil :project :version)' | tr -d '"')
-          echo "POD_VERSION=$POD_VERSION" >> $GITHUB_ENV
-          echo "pod_version=$POD_VERSION" >> $GITHUB_OUTPUT
-          echo "POD_VERSION is $POD_VERSION"
       
       - name: 📦 Compile pod into an uberjar
         run: clojure -T:build uber
@@ -88,16 +111,15 @@ jobs:
   linux:
     name: Compile ubuntu-latest-x86_64-binary, Test
     runs-on: ubuntu-latest
-    needs: [build-uberjar]
+    needs: [set-shared-outputs, build-uberjar]
 
     env:
-      POD_VERSION: ${{ needs.build-uberjar.outputs.pod_version }}
+      POD_VERSION: ${{ needs.set-shared-outputs.outputs.pod_version }}
 
     steps:
       - name: 🛎️ Checkout
         uses: actions/checkout@v4
 
-      # https://github.com/marketplace/actions/github-action-for-graalvm
       - name: 🔧 Setup GraalVM
         uses: graalvm/setup-graalvm@v1
         with:
@@ -109,14 +131,10 @@ jobs:
           native-image-pr-reports: true
           version: ${{ env.GRAALVM_VERSION }}
           
-      # It's important to install java before installing clojure tools, because
-      # clojure tools needs java exclusions: babashka, clj-kondo and cljstyle.
-      # https://github.com/marketplace/actions/setup-clojure
       - name: 🔧 Setup Clojure tools
         uses: DeLaGuardo/setup-clojure@12.5
         with:
-          cli: 'latest' # Clojure CLI based on tools.deps
-          bb: 'latest' # Babashka
+          cli: 'latest'
     
       - name: Cache clojure dependencies
         uses: actions/cache@v4
@@ -141,9 +159,6 @@ jobs:
 
       - name: 📦 Compile uberjar to x86_64-linux binary with GraalVM native-image
         run: ./script/compile.sh
-        env:
-          BABASHKA_STATIC: true
-          BABASHKA_MUSL: true
       
       # The tests expect the uberjar and the binary to be in a directory called "target"
       - name: Copy the uberjar and the binary to the target directory
@@ -164,10 +179,10 @@ jobs:
   macos:
     name: Compile macos-latest-aarch64-binary, Test
     runs-on: macOS-latest
-    needs: [build-uberjar]
+    needs: [set-shared-outputs, build-uberjar]
 
     env:
-      POD_VERSION: ${{ needs.build-uberjar.outputs.pod_version }}
+      POD_VERSION: ${{ needs.set-shared-outputs.outputs.pod_version }}
 
     steps:
       - name: 🛎️ Checkout
@@ -240,10 +255,10 @@ jobs:
   windows:
     name: Compile windows-latest-x86_64-binary, Test
     runs-on: windows-latest
-    needs: [build-uberjar]
+    needs: [set-shared-outputs, build-uberjar]
 
     env:
-      POD_VERSION: ${{ needs.build-uberjar.outputs.pod_version }}
+      POD_VERSION: ${{ needs.set-shared-outputs.outputs.pod_version }}
 
     steps:
       - name: 🛎️ Checkout
@@ -326,7 +341,6 @@ jobs:
         uses: DeLaGuardo/setup-clojure@12.5
         with:
           cli: 'latest'
-          bb: 'latest'
       
       - name: 📦 Compile pod into an uberjar
         run: clojure -T:build uber
@@ -340,12 +354,13 @@ jobs:
   github-release:
     name: GitHub release
     if: ${{ github.event_name != 'pull_request' }}
-    needs: [build-uberjar, linux, macos, windows]
+    needs: [set-shared-outputs, build-uberjar, linux, macos, windows]
     concurrency: deploy-group # Ensures that only a single instance of this job is running at any given time.
     runs-on: ubuntu-latest
     
     env:
-      POD_VERSION: ${{ needs.build-uberjar.outputs.pod_version }}
+      POD_VERSION: ${{ needs.set-shared-outputs.outputs.pod_version }}
+      PRERELEASE: ${{ needs.set-shared-outputs.outputs.prerelease }}
 
     permissions:
       contents: write
@@ -353,6 +368,11 @@ jobs:
     steps:
       - name: 🛎️ Checkout
         uses: actions/checkout@v4
+
+      - name: 🔧 Setup Babashka
+        uses: DeLaGuardo/setup-clojure@12.5
+        with:
+          bb: 'latest'
 
       - name: ⬇️ Download uberjar
         uses: actions/download-artifact@v4
@@ -388,14 +408,6 @@ jobs:
 
       # Troubleshooting: do we have every assets we want to include in the GitHub release?
       - run: ls -R
-
-      - name: Set prerelease flag
-        run: |
-          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-            echo "PRERELEASE=false" >> $GITHUB_ENV
-          else
-            echo "PRERELEASE=true" >> $GITHUB_ENV
-          fi
 
       # https://github.com/marketplace/actions/gh-release
       # See also this workflow that uses the bruceadams/get-release action:

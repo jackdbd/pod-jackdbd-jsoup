@@ -1,6 +1,7 @@
 {pkgs, ...}: {
   enterShell = ''
     versions
+    export POD_VERSION=$(pod-version)
   '';
 
   enterTest = ''
@@ -66,6 +67,9 @@
   };
 
   scripts = {
+    pod-version.exec = ''
+      bb -e '(-> (slurp "deps.edn") edn/read-string :aliases :neil :project :version)' | tr -d '"'
+    '';
     versions.exec = ''
       echo "=== Versions ==="
       bb --version
