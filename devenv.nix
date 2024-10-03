@@ -1,13 +1,7 @@
 {pkgs, ...}: {
   enterShell = ''
     versions
-
-    # When SNAPSHOT_SUFFIX is set, `bb deploy:clojars` will create/overwrite a
-    # snapshot release. When SNAPSHOT_SUFFIX is not set, or set to an empty
-    # string, `bb deploy:clojars` will create a regular release, or fail if the
-    # release already exists.
-    export SNAPSHOT_SUFFIX="$(git rev-list --count HEAD)-SNAPSHOT"
-    # export SNAPSHOT_SUFFIX=""
+    export POD_VERSION=$(pod-version)
   '';
 
   enterTest = ''
@@ -73,6 +67,9 @@
   };
 
   scripts = {
+    pod-version.exec = ''
+      bb -e '(-> (slurp "deps.edn") edn/read-string :aliases :neil :project :version)' | tr -d '"'
+    '';
     versions.exec = ''
       echo "=== Versions ==="
       bb --version
