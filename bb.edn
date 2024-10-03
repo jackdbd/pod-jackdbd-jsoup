@@ -74,6 +74,11 @@
                       jar-path (format "target/%s-%s-standalone.jar" pod-name pod-version)]
                   (shell "jar --file" jar-path "--list"))}
 
+         snapshot
+         {:doc "Set snapshot version and create git commit and tag (e.g. bb snapshot patch)"
+          ;; bb snapshot [patch|minor|major]
+          :task (tasks/snapshot (keyword (first *command-line-args*)))}
+
          tag
          {:doc "Create an annotated git tag if previous commit was a version commit (e.g. v1.2.3)"
           :task (let [{:keys [out]} (shell {:out :string} "git log --format=%B -n 1")
