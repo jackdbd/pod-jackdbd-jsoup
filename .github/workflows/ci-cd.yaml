@@ -46,11 +46,10 @@ jobs:
           echo "pod_version=$POD_VERSION" >> $GITHUB_OUTPUT
 
           if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-            echo "PRERELEASE=false" >> $GITHUB_ENV
+            echo "prerelease=false" >> $GITHUB_OUTPUT
           else
-            echo "PRERELEASE=true" >> $GITHUB_ENV
+            echo "prerelease=true" >> $GITHUB_OUTPUT
           fi
-          echo "prerelease=$PRERELEASE" >> $GITHUB_OUTPUT
 
       - name: Log job outputs
         run: |
@@ -329,7 +328,7 @@ jobs:
   clojars:
     name: Publish to Clojars
     if: ${{ github.event_name != 'pull_request' }}
-    # needs: [linux, macos, windows] # publish only when all tests on all platforms pass
+    needs: [linux, macos, windows] # publish only when all tests on all platforms pass
     runs-on: ubuntu-latest
 
     steps:
@@ -448,9 +447,7 @@ jobs:
         id: github_release
         with:
           body: |
-            This is a release of **${{ env.POD_NAME }}** version `${{ env.POD_VERSION }}`.
-
-            The pod is also [published as an uberjar to Clojars](https://clojars.org/com.github.jackdbd/pod.jackdbd.jsoup).
+            📦 **${{ env.POD_NAME }}** version `${{ env.POD_VERSION }}` is [available on Clojars](https://clojars.org/com.github.jackdbd/pod.jackdbd.jsoup/versions/${{ env.POD_VERSION }}).
           # draft: true
           fail_on_unmatched_files: true
           files: |

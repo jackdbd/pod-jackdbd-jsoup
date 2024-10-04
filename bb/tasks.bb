@@ -8,7 +8,6 @@
 
 (defn print-classpath []
   (println "=== CLASSPATH BEGIN ===")
-  ;; (System/getProperty "java.class.path")
   (doseq [path (set (split-classpath (get-classpath)))]
     (println path))
   (println "=== CLASSPATH END ==="))
@@ -51,6 +50,17 @@
       (shell (format "git commit -m v%s" stable-version))
       (shell ["git" "tag" "-a" (format "v%s" stable-version) "--message" message])
       (shell (format "git push --atomic")))))
+
+(defn fetch-force-snapshot-tags []
+  (let [remote-tags (->> (sh "git" "ls-remote" "--tags" "origin")
+                         :out
+                         str/split-lines
+                         (map #(second (str/split % #"\s+")))
+                         (filter #(re-find #"v\d+\.\d+\.\d+-SNAPSHOT" %)))]
+    (doseq [tag remote-tags]
+      (let [tag-name (last (str/split tag #"/"))]
+        (println "Fetching and force updating tag:" tag-name)
+        (sh "git" "fetch" "origin" "tag" tag-name "--force")))))
 
 (comment
   (print-classpath)
