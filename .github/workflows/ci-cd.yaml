@@ -350,10 +350,31 @@ jobs:
           CLOJARS_PASSWORD: ${{ secrets.CLOJARS_PASSWORD }}
         run: clojure -T:build deploy
 
+  tag-latest-snapshot:
+    name: Tag commit associated with latest snapshot version on Clojars
+    if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+    needs: [set-shared-outputs, clojars]
+    runs-on: ubuntu-latest
+
+    env:
+      POD_VERSION: ${{ needs.set-shared-outputs.outputs.pod_version }}
+
+    steps:
+      - name: 🛎️ Checkout
+        uses: actions/checkout@v4
+
+      - name: Tag commit
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "<>"
+          git status
+          git tag -a v${{ env.POD_VERSION }} -m "This version was published to Clojars: https://clojars.org/com.github.jackdbd/pod.jackdbd.jsoup/versions/${{ env.POD_VERSION }}" --force
+          git describe
+
   github-release:
     name: GitHub release
     if: ${{ github.event_name != 'pull_request' }}
-    needs: [set-shared-outputs, build-uberjar, linux, macos, windows]
+    needs: [set-shared-outputs, build-uberjar, linux, macos, windows, clojars]
     runs-on: ubuntu-latest
     
     env:
@@ -409,7 +430,7 @@ jobs:
       # - run: ls -R
 
       # https://github.com/marketplace/actions/gh-release
-      - name: 🚀 Create GitHub release
+      - name: 🚀 Create or update GitHub release
         uses: softprops/action-gh-release@v2
         id: github_release
         with:
