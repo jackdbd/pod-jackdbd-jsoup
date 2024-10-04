@@ -353,6 +353,8 @@ jobs:
   tag-latest-snapshot:
     name: Tag commit associated with latest snapshot version on Clojars
     if: ${{ github.event_name != 'pull_request' && github.ref != 'refs/heads/main' }}
+    # Only after we have succesfully deployed to Clojars we know that the latest
+    # commit is associated with the latest snapshot version on Clojars.
     needs: [set-shared-outputs, clojars]
     runs-on: ubuntu-latest
 
@@ -374,7 +376,12 @@ jobs:
   github-release:
     name: GitHub release
     if: ${{ github.event_name != 'pull_request' }}
-    needs: [set-shared-outputs, build-uberjar, linux, macos, windows, clojars]
+    # Only after we have updated the git tag associated with the latest snapshot
+    # version we can create a GitHub release. Otherwise the commit associated
+    # with the GitHub release might be incorrect even if the git tag is correct.
+    # See the "target_commitish" parameter.
+    # https://docs.github.com/en/rest/releases/releases?apiVersion=2022-11-28#create-a-release--parameters
+    needs: [set-shared-outputs, build-uberjar, linux, macos, windows, clojars, tag-latest-snapshot]
     runs-on: ubuntu-latest
     
     env:
