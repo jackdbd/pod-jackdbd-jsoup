@@ -20,18 +20,15 @@
       :major (let [snapshot-version (format "%s.%s.%s-SNAPSHOT" (inc (Integer/parseInt major)) 0 0)]
                (shell (format "neil version set %s --no-tag" snapshot-version))
                (shell "git add deps.edn")
-               (shell (format "git commit -m v%s" snapshot-version))
-               (shell (format "git tag -a v%s -m v%s" snapshot-version snapshot-version)))
+               (shell (format "git commit -m 'set version to %s'" snapshot-version)))
       :minor (let [snapshot-version (format "%s.%s.%s-SNAPSHOT" major (inc (Integer/parseInt minor)) 0)]
                (shell (format "neil version set %s --no-tag" snapshot-version))
                (shell "git add deps.edn")
-               (shell (format "git commit -m v%s" snapshot-version))
-               (shell (format "git tag -a v%s -m v%s" snapshot-version snapshot-version)))
+               (shell (format "git commit -m 'set version to %s'" snapshot-version)))
       :patch (let [snapshot-version (format "%s.%s.%s-SNAPSHOT" major minor (inc (Integer/parseInt patch)))]
                (shell (format "neil version set %s --no-tag" snapshot-version))
                (shell "git add deps.edn")
-               (shell (format "git commit -m v%s" snapshot-version))
-               (shell (format "git tag -a v%s -m v%s" snapshot-version snapshot-version)))
+               (shell (format "git commit -m 'set version to %s'" snapshot-version)))
       (shell "echo 'Usage: bb snapshot [major|minor|patch]'"))))
 
 (defn stable []
