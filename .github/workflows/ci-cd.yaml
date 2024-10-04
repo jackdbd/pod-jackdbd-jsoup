@@ -352,7 +352,7 @@ jobs:
 
   tag-latest-snapshot:
     name: Tag commit associated with latest snapshot version on Clojars
-    if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+    if: ${{ github.event_name != 'pull_request' && github.ref != 'refs/heads/main' }}
     needs: [set-shared-outputs, clojars]
     runs-on: ubuntu-latest
 
