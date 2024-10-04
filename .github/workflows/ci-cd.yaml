@@ -46,11 +46,10 @@ jobs:
           echo "pod_version=$POD_VERSION" >> $GITHUB_OUTPUT
 
           if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-            echo "PRERELEASE=false" >> $GITHUB_ENV
+            echo "prerelease=false" >> $GITHUB_OUTPUT
           else
-            echo "PRERELEASE=true" >> $GITHUB_ENV
+            echo "prerelease=true" >> $GITHUB_OUTPUT
           fi
-          echo "prerelease=$PRERELEASE" >> $GITHUB_OUTPUT
 
       - name: Log job outputs
         run: |
@@ -350,10 +349,44 @@ jobs:
           CLOJARS_PASSWORD: ${{ secrets.CLOJARS_PASSWORD }}
         run: clojure -T:build deploy
 
+  tag-latest-snapshot:
+    name: Tag commit associated with latest snapshot version on Clojars
+    if: ${{ github.event_name != 'pull_request' && github.ref != 'refs/heads/main' }}
+    # Only after we have succesfully deployed to Clojars we know that the latest
+    # commit is associated with the latest snapshot version on Clojars.
+    needs: [set-shared-outputs, clojars]
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    env:
+      POD_VERSION: ${{ needs.set-shared-outputs.outputs.pod_version }}
+
+    steps:
+      - name: 🛎️ Checkout
+        uses: actions/checkout@v4
+
+      - name: Tag commit and push force it
+        # https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/accessing-contextual-information-about-workflow-runs#about-contexts
+        env:
+          BOT_NAME: snapshot-tagger[bot]
+        run: |
+          git config user.name "Snapshot Tagger Bot"
+          git config user.email "snapshot-tagger-bot@giacomodebidda.com"
+          git tag --force -a v${{ env.POD_VERSION }} -m "This version was published to Clojars: https://clojars.org/com.github.jackdbd/pod.jackdbd.jsoup/versions/${{ env.POD_VERSION }}"
+          git remote set-url origin https://${{ env.BOT_NAME }}:${{ github.token }}@github.com/${{ github.repository }}.git
+          git push --force origin v${{ env.POD_VERSION }}
+
   github-release:
     name: GitHub release
     if: ${{ github.event_name != 'pull_request' }}
-    needs: [set-shared-outputs, build-uberjar, linux, macos, windows]
+    # Only after we have updated the git tag associated with the latest snapshot
+    # version we can create a GitHub release. Otherwise the commit associated
+    # with the GitHub release might be incorrect even if the git tag is correct.
+    # See the "target_commitish" parameter.
+    # https://docs.github.com/en/rest/releases/releases?apiVersion=2022-11-28#create-a-release--parameters
+    needs: [set-shared-outputs, build-uberjar, linux, macos, windows, clojars, tag-latest-snapshot]
     runs-on: ubuntu-latest
     
     env:
@@ -409,14 +442,12 @@ jobs:
       # - run: ls -R
 
       # https://github.com/marketplace/actions/gh-release
-      - name: 🚀 Create GitHub release
+      - name: 🚀 Create or update GitHub release
         uses: softprops/action-gh-release@v2
         id: github_release
         with:
           body: |
-            This is a release of **${{ env.POD_NAME }}** version `${{ env.POD_VERSION }}`.
-
-            The pod is also [published as an uberjar to Clojars](https://clojars.org/com.github.jackdbd/pod.jackdbd.jsoup).
+            📦 **${{ env.POD_NAME }}** version `${{ env.POD_VERSION }}` is [available on Clojars](https://clojars.org/com.github.jackdbd/pod.jackdbd.jsoup/versions/${{ env.POD_VERSION }}).
           # draft: true
           fail_on_unmatched_files: true
           files: |

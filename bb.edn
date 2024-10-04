@@ -68,8 +68,13 @@
           ;; bb snapshot [patch|minor|major]
           :task (tasks/snapshot (keyword (first *command-line-args*)))}
 
-         stable {:doc "Promote the current SNAPSHOT version to stable"
-                 :task (tasks/stable)}
+         stable
+         {:doc "Promote the current SNAPSHOT version to stable"
+          :task (tasks/stable)}
+
+         sync-tags
+         {:doc "Run git fetch --force on all v*.*.*-SNAPSHOT tags"
+          :task (tasks/fetch-force-snapshot-tags)}
 
          test
          {:doc "Run all tests"
