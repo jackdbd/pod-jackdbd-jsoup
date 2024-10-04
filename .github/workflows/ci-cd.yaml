@@ -330,7 +330,6 @@ jobs:
     name: Publish to Clojars
     if: ${{ github.event_name != 'pull_request' }}
     needs: [linux, macos, windows] # publish only when all tests on all platforms pass
-    concurrency: deploy-group # Ensures that only a single instance of this job is running at any given time.
     runs-on: ubuntu-latest
 
     steps:
@@ -355,7 +354,6 @@ jobs:
     name: GitHub release
     if: ${{ github.event_name != 'pull_request' }}
     needs: [set-shared-outputs, build-uberjar, linux, macos, windows]
-    concurrency: deploy-group # Ensures that only a single instance of this job is running at any given time.
     runs-on: ubuntu-latest
     
     env:
