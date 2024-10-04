@@ -6,6 +6,15 @@
           [clojure.string :as str]
           [tasks])
 
+         bump:minor
+         {:doc "Bump the current minor version"
+          :task (tasks/bump {:dry-run true :kind :minor})}
+
+         bump:patch
+         {:doc "Bump the current patch version"
+          ;;   (keyword (first *command-line-args*))
+          :task (tasks/bump {:dry-run true :kind :patch})}
+
          build:binary
          {:doc "Compile the pod into a statically-linked binary with GraalVM native-image (Linux only)"
           :depends [build:uber]
@@ -63,14 +72,13 @@
                       jar-path (format "target/%s-%s-standalone.jar" pod-name pod-version)]
                   (shell "jar --file" jar-path "--list"))}
 
-         snapshot
-         {:doc "Set snapshot version and create git commit and tag (e.g. bb snapshot patch)"
-          ;; bb snapshot [patch|minor|major]
-          :task (tasks/snapshot (keyword (first *command-line-args*)))}
+         prerelease
+         {:doc "Create a prerelease"
+          :task (tasks/prerelease {:dry-run false})}
 
-         stable
-         {:doc "Promote the current SNAPSHOT version to stable"
-          :task (tasks/stable)}
+         release
+         {:doc "Promote the current prerelease to release"
+          :task (tasks/release {:dry-run true})}
 
          sync-tags
          {:doc "Run git fetch --force on all v*.*.*-SNAPSHOT tags"

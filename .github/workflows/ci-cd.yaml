@@ -450,7 +450,10 @@ jobs:
             ${{ env.POD_NAME }}-${{ env.POD_VERSION }}-macos-latest-aarch64.zip
             ${{ env.POD_NAME }}-${{ env.POD_VERSION }}-ubuntu-latest-x86_64.zip
             ${{ env.POD_NAME }}-${{ env.POD_VERSION }}-windows-latest-x86_64.zip
-          generate_release_notes: false # TODO: decide whether to use this or not
+          # body is prepended to these automatically generated release notes.
+          # See here for how to configure these release notes:
+          # https://docs.github.com/en/repositories/releasing-projects-on-github/automatically-generated-release-notes#configuring-automatically-generated-release-notes
+          generate_release_notes: true
           name: v${{ env.POD_VERSION }}
           prerelease: ${{ env.PRERELEASE }}
           tag_name: v${{ env.POD_VERSION }}
