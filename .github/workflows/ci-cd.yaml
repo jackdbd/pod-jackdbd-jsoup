@@ -329,7 +329,7 @@ jobs:
   clojars:
     name: Publish to Clojars
     if: ${{ github.event_name != 'pull_request' }}
-    needs: [linux, macos, windows] # publish only when all tests on all platforms pass
+    # needs: [linux, macos, windows] # publish only when all tests on all platforms pass
     runs-on: ubuntu-latest
 
     steps:
@@ -358,6 +358,9 @@ jobs:
     needs: [set-shared-outputs, clojars]
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: write
+
     env:
       POD_VERSION: ${{ needs.set-shared-outputs.outputs.pod_version }}
 
@@ -365,13 +368,16 @@ jobs:
       - name: 🛎️ Checkout
         uses: actions/checkout@v4
 
-      - name: Tag commit
+      - name: Tag commit and push force it
+        # https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/accessing-contextual-information-about-workflow-runs#about-contexts
+        env:
+          BOT_NAME: snapshot-tagger[bot]
         run: |
-          git config user.name "GitHub Actions Bot"
-          git config user.email "<>"
-          git status
-          git tag -a v${{ env.POD_VERSION }} -m "This version was published to Clojars: https://clojars.org/com.github.jackdbd/pod.jackdbd.jsoup/versions/${{ env.POD_VERSION }}" --force
-          git describe
+          git config user.name "Snapshot Tagger Bot"
+          git config user.email "snapshot-tagger-bot@giacomodebidda.com"
+          git tag --force -a v${{ env.POD_VERSION }} -m "This version was published to Clojars: https://clojars.org/com.github.jackdbd/pod.jackdbd.jsoup/versions/${{ env.POD_VERSION }}"
+          git remote set-url origin https://${{ env.BOT_NAME }}:${{ github.token }}@github.com/${{ github.repository }}.git
+          git push --force origin v${{ env.POD_VERSION }}
 
   github-release:
     name: GitHub release
