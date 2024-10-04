@@ -373,6 +373,7 @@ jobs:
         uses: DeLaGuardo/setup-clojure@12.5
         with:
           bb: 'latest'
+          cljfmt: 'latest'
 
       - name: ⬇️ Download uberjar
         uses: actions/download-artifact@v4
@@ -410,9 +411,6 @@ jobs:
       # - run: ls -R
 
       # https://github.com/marketplace/actions/gh-release
-      # See also this workflow that uses the bruceadams/get-release action:
-      # https://github.com/juji-io/datalevin/blob/master/.github/workflows/release.binaries.yml
-      # https://github.com/bruceadams/get-release
       - name: 🚀 Create GitHub release
         uses: softprops/action-gh-release@v2
         id: github_release
@@ -436,7 +434,7 @@ jobs:
       # ATTENTION: the order of `steps.github_release.outputs.assets` depends on
       # the order of the `files` defined in the `github_release` step.
       # https://github.com/marketplace/actions/gh-release#outputs
-      - name: 📄 Create manifest.edn (for registering the pod on the Babashka Pod registry)
+      - name: 📄 Create manifest.edn
         run: |
           RELEASE_URL=${{ steps.github_release.outputs.url }}
           RELEASE_ID=${{ steps.github_release.outputs.id }}
@@ -454,22 +452,15 @@ jobs:
           echo "UBUNTU_LATEST_x86_64_ZIP_URL is $UBUNTU_LATEST_x86_64_ZIP_URL"
           echo "WINDOWS_LATEST_x86_64_ZIP_URL is $WINDOWS_LATEST_x86_64_ZIP_URL"
           
-          bb bb/manifest.bb --version ${{ env.POD_VERSION }} --uberjar $UBERJAR_URL --linux-x86_64 $UBUNTU_LATEST_x86_64_ZIP_URL --macos-aarch64 $MACOS_LATEST_AARCH64_ZIP_URL --windows-x86_64 $WINDOWS_LATEST_x86_64_ZIP_URL
+          bb bb/manifest.bb --uberjar $UBERJAR_URL --linux-x86_64 $UBUNTU_LATEST_x86_64_ZIP_URL --macos-aarch64 $MACOS_LATEST_AARCH64_ZIP_URL --windows-x86_64 $WINDOWS_LATEST_x86_64_ZIP_URL
+          cljfmt fix --remove-multiple-non-indenting-spaces --split-keypairs-over-multiple-lines manifest.edn
           echo "Here is the manifest.edn generated"
           cat manifest.edn
 
+      # Don't forget to register the pod: open a PR on Babashka Pod registry and upload the manifest.edn there.
       - name: 🚀 Add manifest.edn to GitHub release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             manifest.edn
           tag_name: v${{ env.POD_VERSION }}
-
-      # With this step the manifest.edn can be downloaded from the GitHub
-      # workflow. Then you will need to "register the pod", i.e. open a PR on
-      # the Babashka pod registry and commit your manifest.edn there.
-      # - name: ⬆️ Upload manifest.edn
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: manifest-edn
-      #     path: manifest.edn
