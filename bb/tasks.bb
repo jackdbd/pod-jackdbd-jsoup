@@ -18,8 +18,8 @@
 (defn default-get-version []
   (-> (edn/read-string (slurp "deps.edn")) :aliases :neil :project :version))
 
-(defn prerelease
-  ([] (prerelease {}))
+(defn prerelease!
+  ([] (prerelease! {}))
   ([{:keys [allowed-branches dry-run force-with-lease get-version prerelease-type] 
      :or {allowed-branches default-prerelease-branches
           dry-run false
@@ -32,7 +32,7 @@
          matches (re-matches pattern version)
          branch (-> (sh "git branch --show-current") :out str/trim-newline)]
      (when (empty? matches)
-       (println (format "[ERROR] Version %s is not a prerelease." version))
+       (println (format "[ERROR] Version %s is not a prerelease of type %s." version prerelease-type))
        (println (format "[TIP] A prerelease version should match this pattern: %s" pattern))
        (System/exit 1))
      
@@ -47,7 +47,7 @@
                        (format "git push --atomic --force-with-lease origin %s" branch)
                        (format "git push --atomic origin %s" branch))]]
        (when (not (contains? allowed-branches branch))
-         (println (format "[ERROR] Cannot prerelease: you are on branch: %s" branch))
+         (println (format "[ERROR] Cannot create prerelease: you are on branch: %s" branch))
          (println (format "[TIP] A prerelease is allowed only on these branches: %s" (str allowed-branches)))
          (System/exit 1))
        
@@ -59,8 +59,8 @@
          (doseq [cmd commands]
            (shell cmd)))))))
 
-(defn bump
-  ([] (bump {}))
+(defn bump!
+  ([] (bump! {}))
   ([{:keys [dry-run get-version kind prerelease-type]
      :or {dry-run false
           get-version default-get-version
@@ -95,8 +95,8 @@
            (doseq [cmd commands]
              (shell cmd))))))))
 
-(defn release
-  ([] (release {}))
+(defn release!
+  ([] (release! {}))
   ([{:keys [allowed-branches dry-run force-with-lease get-version prerelease-type]
      :or {allowed-branches default-release-branches
           dry-run false
@@ -109,7 +109,7 @@
         matches (re-matches pattern version)
         branch (-> (sh "git branch --show-current") :out str/trim-newline)]
     (when (empty? matches)
-      (println (format "[ERROR] Cannot release: version %s is not a prerelease, so it cannot be promoted to a release." version))
+      (println (format "[ERROR] Cannot release: version %s is not a prerelease of type %s, so it cannot be promoted to a release." prerelease-type version))
       (println (format "[TIP] A prerelease version should match this pattern: %s" pattern))
       (System/exit 1))
 

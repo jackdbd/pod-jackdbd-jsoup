@@ -6,13 +6,14 @@
           [clojure.string :as str]
           [tasks])
 
-         bump:minor
-         {:doc "Bump the current minor version"
-          :task (tasks/bump {:dry-run true :kind :minor})}
-
          bump
-         {:doc "Bump the current version (usage: bb bump patch|minor|major)"
-          :task (tasks/bump {:dry-run true :kind (keyword (first *command-line-args*))})}
+         {:doc "Bump the current version (e.g. bb bump minor)"
+          :task (let [kind (first *command-line-args*)]
+                  (when (nil? kind)
+                    (println "[ERROR] Usage: bb bump patch|minor|major)")
+                    (System/exit 1))
+                  (tasks/bump! {:dry-run true
+                                :kind (keyword kind)}))}
 
          build:binary
          {:doc "Compile the pod into a statically-linked binary with GraalVM native-image (Linux only)"
@@ -73,11 +74,12 @@
 
          prerelease
          {:doc "Create a prerelease"
-          :task (tasks/prerelease {:dry-run false :force-with-lease true})}
+          :task (tasks/prerelease! {:dry-run false
+                                    :prerelease-type "SNAPSHOT"})}
 
          release
          {:doc "Promote the current prerelease to release"
-          :task (tasks/release {:dry-run true})}
+          :task (tasks/release! {:dry-run false})}
 
          sync-tags
          {:doc "Run git fetch --force on all v*.*.*-SNAPSHOT tags"
