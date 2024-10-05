@@ -10,10 +10,9 @@
          {:doc "Bump the current minor version"
           :task (tasks/bump {:dry-run true :kind :minor})}
 
-         bump:patch
-         {:doc "Bump the current patch version"
-          ;;   (keyword (first *command-line-args*))
-          :task (tasks/bump {:dry-run true :kind :patch})}
+         bump
+         {:doc "Bump the current version (usage: bb bump patch|minor|major)"
+          :task (tasks/bump {:dry-run true :kind (keyword (first *command-line-args*))})}
 
          build:binary
          {:doc "Compile the pod into a statically-linked binary with GraalVM native-image (Linux only)"
