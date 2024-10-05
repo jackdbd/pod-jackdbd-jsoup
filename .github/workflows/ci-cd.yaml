@@ -28,7 +28,7 @@ jobs:
   
     outputs:
       pod_version: ${{ steps.set_outputs.outputs.pod_version }}
-      prerelease: ${{ steps.set_outputs.outputs.prerelease }}
+      is_prerelease: ${{ steps.set_outputs.outputs.is_prerelease }}
 
     steps:
       - name: 🛎️ Checkout
@@ -46,15 +46,15 @@ jobs:
           echo "pod_version=$POD_VERSION" >> $GITHUB_OUTPUT
 
           if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-            echo "prerelease=false" >> $GITHUB_OUTPUT
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
           else
-            echo "prerelease=true" >> $GITHUB_OUTPUT
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
           fi
 
       - name: Log job outputs
         run: |
           echo "pod_version is ${{ steps.set_outputs.outputs.pod_version }}"
-          echo "prerelease is ${{ steps.set_outputs.outputs.prerelease }}"
+          echo "is_prerelease is ${{ steps.set_outputs.outputs.is_prerelease }}"
 
   build-uberjar:
     name: Build uberjar
@@ -328,8 +328,14 @@ jobs:
   clojars:
     name: Publish to Clojars
     if: ${{ github.event_name != 'pull_request' }}
-    needs: [linux, macos, windows] # publish only when all tests on all platforms pass
+    needs: [set-shared-outputs, linux, macos, windows] # publish only when all tests on all platforms pass
     runs-on: ubuntu-latest
+
+    env:
+      ARTIFACT_VERSION: ${{ needs.set-shared-outputs.outputs.pod_version }}
+
+    permissions:
+      contents: write
 
     steps:
       - name: 🛎️ Checkout
@@ -343,40 +349,22 @@ jobs:
       - name: 📦 Compile pod into an uberjar
         run: clojure -T:build uber
 
-      - name: 🌐 Publish to Clojars
+      - name: 🌐 Publish version ${{ env.ARTIFACT_VERSION }} to Clojars
         env:
           CLOJARS_USERNAME: jackdbd
           CLOJARS_PASSWORD: ${{ secrets.CLOJARS_PASSWORD }}
         run: clojure -T:build deploy
 
-  tag-latest-snapshot:
-    name: Tag commit associated with latest snapshot version on Clojars
-    if: ${{ github.event_name != 'pull_request' && github.ref != 'refs/heads/main' }}
-    # Only after we have succesfully deployed to Clojars we know that the latest
-    # commit is associated with the latest snapshot version on Clojars.
-    needs: [set-shared-outputs, clojars]
-    runs-on: ubuntu-latest
-
-    permissions:
-      contents: write
-
-    env:
-      POD_VERSION: ${{ needs.set-shared-outputs.outputs.pod_version }}
-
-    steps:
-      - name: 🛎️ Checkout
-        uses: actions/checkout@v4
-
-      - name: Tag commit and push force it
+      - name: Tag release commit and push it
         # https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/accessing-contextual-information-about-workflow-runs#about-contexts
         env:
-          BOT_NAME: snapshot-tagger[bot]
+          BOT_NAME: commit-tagger[bot]
         run: |
-          git config user.name "Snapshot Tagger Bot"
-          git config user.email "snapshot-tagger-bot@giacomodebidda.com"
-          git tag -a v${{ env.POD_VERSION }} -m "This version was published to Clojars: https://clojars.org/com.github.jackdbd/pod.jackdbd.jsoup/versions/${{ env.POD_VERSION }}"
+          git config user.name "Commit Tagger Bot"
+          git config user.email "commit-tagger-bot@giacomodebidda.com"
+          git tag -a v${{ env.ARTIFACT_VERSION }} -m "This version was published to Clojars: https://clojars.org/com.github.jackdbd/pod.jackdbd.jsoup/versions/${{ env.ARTIFACT_VERSION }}"
           git remote set-url origin https://${{ env.BOT_NAME }}:${{ github.token }}@github.com/${{ github.repository }}.git
-          git push origin v${{ env.POD_VERSION }}
+          git push origin v${{ env.ARTIFACT_VERSION }}
 
   github-release:
     name: GitHub release
@@ -385,8 +373,8 @@ jobs:
     runs-on: ubuntu-latest
     
     env:
+      IS_PRERELEASE: ${{ needs.set-shared-outputs.outputs.is_prerelease }}
       POD_VERSION: ${{ needs.set-shared-outputs.outputs.pod_version }}
-      PRERELEASE: ${{ needs.set-shared-outputs.outputs.prerelease }}
 
     permissions:
       contents: write
@@ -455,7 +443,7 @@ jobs:
           # https://docs.github.com/en/repositories/releasing-projects-on-github/automatically-generated-release-notes#configuring-automatically-generated-release-notes
           generate_release_notes: true
           name: v${{ env.POD_VERSION }}
-          prerelease: ${{ env.PRERELEASE }}
+          prerelease: ${{ env.IS_PRERELEASE }}
           tag_name: v${{ env.POD_VERSION }}
 
       # ATTENTION: the order of `steps.github_release.outputs.assets` depends on
