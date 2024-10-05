@@ -12,7 +12,7 @@
                   (when (nil? kind)
                     (println "[ERROR] Usage: bb bump patch|minor|major)")
                     (System/exit 1))
-                  (tasks/bump! {:dry-run true
+                  (tasks/bump! {:dry-run false
                                 :kind (keyword kind)}))}
 
          build:binary
@@ -74,7 +74,7 @@
 
          prerelease
          {:doc "Increment current prerelease and publish it Clojars and GitHub Releases"
-          :task (tasks/prerelease! {:dry-run true
+          :task (tasks/prerelease! {:dry-run false
                                     :prerelease-type "RC"})}
 
          release
