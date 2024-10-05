@@ -374,9 +374,9 @@ jobs:
         run: |
           git config user.name "Snapshot Tagger Bot"
           git config user.email "snapshot-tagger-bot@giacomodebidda.com"
-          git tag --force -a v${{ env.POD_VERSION }} -m "This version was published to Clojars: https://clojars.org/com.github.jackdbd/pod.jackdbd.jsoup/versions/${{ env.POD_VERSION }}"
+          git tag -a v${{ env.POD_VERSION }} -m "This version was published to Clojars: https://clojars.org/com.github.jackdbd/pod.jackdbd.jsoup/versions/${{ env.POD_VERSION }}"
           git remote set-url origin https://${{ env.BOT_NAME }}:${{ github.token }}@github.com/${{ github.repository }}.git
-          git push --force origin v${{ env.POD_VERSION }}
+          git push origin v${{ env.POD_VERSION }}
 
   github-release:
     name: GitHub release
