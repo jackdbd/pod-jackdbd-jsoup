@@ -13,7 +13,8 @@
                     (println "[ERROR] Usage: bb bump patch|minor|major)")
                     (System/exit 1))
                   (tasks/bump! {:dry-run false
-                                :kind (keyword kind)}))}
+                                :kind (keyword kind)
+                                :prerelease-type "RC"}))}
 
          build:binary
          {:doc "Compile the pod into a statically-linked binary with GraalVM native-image (Linux only)"
@@ -79,7 +80,8 @@
 
          release
          {:doc "Promote current prerelease to a release and publish it to Clojars and GitHub Releases"
-          :task (tasks/release! {:dry-run false})}
+          :task (tasks/release! {:dry-run false
+                                 :prerelease-type "RC"})}
 
          test
          {:doc "Run all tests"

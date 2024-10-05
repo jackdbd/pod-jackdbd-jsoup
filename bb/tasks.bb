@@ -45,13 +45,6 @@
                    (if force-with-lease
                      (format "git push --atomic --force-with-lease origin %s" branch)
                      (format "git push --atomic origin %s" branch))]]
-     
-    ;;  (when (contains? allowed-branches branch) (prn "foo" semver))
-     
-    ;;  (when (empty? matches)
-    ;;    (println (format "[ERROR] Version %s is not a prerelease of type %s." version prerelease-type))
-    ;;    (println (format "[TIP] A prerelease version should match this pattern: %s" pattern))
-    ;;    (System/exit 1))
      (when (not (contains? allowed-branches branch))
        (println (format "[ERROR] Cannot create prerelease: you are on branch: %s" branch))
        (println (format "[TIP] A prerelease is allowed only on these branches: %s" (str allowed-branches)))
@@ -123,7 +116,6 @@
           commands [(format "neil version set %s --no-tag" semver)
                     "git add deps.edn"
                     (format "git commit -m 'set version to %s'" semver)
-                    ;; (format "git tag -a v%s -m %s" semver semver)
                     (if force-with-lease
                       (format "git push --atomic --force-with-lease origin %s" branch)
                       (format "git push --atomic origin %s" branch))]]
