@@ -73,17 +73,13 @@
                   (shell "jar --file" jar-path "--list"))}
 
          prerelease
-         {:doc "Create a prerelease"
-          :task (tasks/prerelease! {:dry-run false
-                                    :prerelease-type "SNAPSHOT"})}
+         {:doc "Increment current prerelease and publish it Clojars and GitHub Releases"
+          :task (tasks/prerelease! {:dry-run true
+                                    :prerelease-type "RC"})}
 
          release
-         {:doc "Promote the current prerelease to release"
+         {:doc "Promote current prerelease to a release and publish it to Clojars and GitHub Releases"
           :task (tasks/release! {:dry-run false})}
-
-         sync-tags
-         {:doc "Run git fetch --force on all v*.*.*-SNAPSHOT tags"
-          :task (tasks/fetch-force-snapshot-tags)}
 
          test
          {:doc "Run all tests"

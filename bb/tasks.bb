@@ -30,34 +30,40 @@
    (let [pattern (re-pattern (str "(\\d+\\.\\d+\\.\\d+)-" prerelease-type "\\.(\\d+)"))
          version (get-version)
          matches (re-matches pattern version)
-         branch (-> (sh "git branch --show-current") :out str/trim-newline)]
-     (when (empty? matches)
-       (println (format "[ERROR] Version %s is not a prerelease of type %s." version prerelease-type))
-       (println (format "[TIP] A prerelease version should match this pattern: %s" pattern))
+         branch (-> (sh "git branch --show-current") :out str/trim-newline)
+         semver (if (empty? matches) 
+                  (let [[major minor _patch] (str/split version #"\.")]
+                    (format "%s.%s.%s" major (inc (Integer/parseInt minor)) 0))
+                  (-> (first matches) (str/split #"-") first))
+         next-prerelease (if (empty? matches)
+                           1
+                           (-> (nth matches 2) Integer/parseInt inc))
+         next-version (format "%s-%s.%s" semver prerelease-type next-prerelease)
+         commands [(format "neil version set %s --no-tag" next-version)
+                   "git add deps.edn"
+                   (format "git commit -m 'set version to %s'" next-version)
+                   (if force-with-lease
+                     (format "git push --atomic --force-with-lease origin %s" branch)
+                     (format "git push --atomic origin %s" branch))]]
+     
+    ;;  (when (contains? allowed-branches branch) (prn "foo" semver))
+     
+    ;;  (when (empty? matches)
+    ;;    (println (format "[ERROR] Version %s is not a prerelease of type %s." version prerelease-type))
+    ;;    (println (format "[TIP] A prerelease version should match this pattern: %s" pattern))
+    ;;    (System/exit 1))
+     (when (not (contains? allowed-branches branch))
+       (println (format "[ERROR] Cannot create prerelease: you are on branch: %s" branch))
+       (println (format "[TIP] A prerelease is allowed only on these branches: %s" (str allowed-branches)))
        (System/exit 1))
      
-     (let [semver (-> (first matches) (str/split #"-") first)
-           next-prerelease (-> (nth matches 2) Integer/parseInt inc)
-           next-version (format "%s-%s.%s" semver prerelease-type next-prerelease)
-           commands [(format "neil version set %s --no-tag" next-version)
-                     "git add deps.edn"
-                     (format "git commit -m 'set version to %s'" next-version)
-                    ;;  (format "git tag -a v%s -m %s" next-version next-version)
-                     (if force-with-lease
-                       (format "git push --atomic --force-with-lease origin %s" branch)
-                       (format "git push --atomic origin %s" branch))]]
-       (when (not (contains? allowed-branches branch))
-         (println (format "[ERROR] Cannot create prerelease: you are on branch: %s" branch))
-         (println (format "[TIP] A prerelease is allowed only on these branches: %s" (str allowed-branches)))
-         (System/exit 1))
-       
-       (if dry-run
-         (do
-           (println (format "[DRY RUN] these commands would have been executed"))
-           (doseq [cmd commands]
-             (println cmd)))
+     (if dry-run
+       (do
+         (println (format "[DRY RUN] these commands would have been executed"))
          (doseq [cmd commands]
-           (shell cmd)))))))
+           (println cmd)))
+       (doseq [cmd commands]
+         (shell cmd))))))
 
 (defn bump!
   ([] (bump! {}))
@@ -134,17 +140,6 @@
         (doseq [cmd commands]
           (shell cmd)))))))
 
-(defn fetch-force-snapshot-tags []
-  (let [remote-tags (->> (sh "git" "ls-remote" "--tags" "origin")
-                         :out
-                         str/split-lines
-                         (map #(second (str/split % #"\s+")))
-                         (filter #(re-find #"v\d+\.\d+\.\d+-SNAPSHOT" %)))]
-    (doseq [tag remote-tags]
-      (let [tag-name (last (str/split tag #"/"))]
-        (println "Fetching and force updating tag:" tag-name)
-        (sh "git" "fetch" "origin" "tag" tag-name "--force")))))
-
 (comment
   (print-classpath)
 
@@ -156,4 +151,8 @@
   (def result-prs (sh "gh pr list --state merged --limit 1 --json title,body,number,id,mergedAt,mergeCommit,author,url"))
   (def pr (first (json/parse-string (:out result-prs) true)))
   (def message (str (:title pr) "\n\n" (:body pr) "\n\n" (format "Merged on main with this PR: %s" (:url pr))))
+
+  (bump! {:dry-run true :kind :minor})
+  (prerelease! {:dry-run true})
+  (release! {:dry-run true})
   )
