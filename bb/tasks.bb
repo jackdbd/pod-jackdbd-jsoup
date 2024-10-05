@@ -20,9 +20,10 @@
 
 (defn prerelease
   ([] (prerelease {}))
-  ([{:keys [allowed-branches dry-run get-version prerelease-type] 
+  ([{:keys [allowed-branches dry-run force-with-lease get-version prerelease-type] 
      :or {allowed-branches default-prerelease-branches
           dry-run false
+          force-with-lease false
           get-version default-get-version
           prerelease-type default-prerelease-type}
      :as _opts}]
@@ -42,7 +43,9 @@
                      "git add deps.edn"
                      (format "git commit -m 'set version to %s'" next-version)
                     ;;  (format "git tag -a v%s -m %s" next-version next-version)
-                     "git push --atomic"]]
+                     (if force-with-lease
+                       (format "git push --atomic --force-with-lease origin %s" branch)
+                       (format "git push --atomic origin %s" branch))]]
        (when (not (contains? allowed-branches branch))
          (println (format "[ERROR] Cannot prerelease: you are on branch: %s" branch))
          (println (format "[TIP] A prerelease is allowed only on these branches: %s" (str allowed-branches)))
@@ -94,9 +97,10 @@
 
 (defn release
   ([] (release {}))
-  ([{:keys [allowed-branches dry-run get-version prerelease-type]
+  ([{:keys [allowed-branches dry-run force-with-lease get-version prerelease-type]
      :or {allowed-branches default-release-branches
           dry-run false
+          force-with-lease false
           get-version default-get-version
           prerelease-type default-prerelease-type}
      :as _opts}]
@@ -114,7 +118,9 @@
                     "git add deps.edn"
                     (format "git commit -m 'set version to %s'" semver)
                     ;; (format "git tag -a v%s -m %s" semver semver)
-                    "git push --atomic"]]
+                    (if force-with-lease
+                      (format "git push --atomic --force-with-lease origin %s" branch)
+                      (format "git push --atomic origin %s" branch))]]
       (when (not (contains? allowed-branches branch))
         (println (format "[ERROR] Cannot release: you are on branch: %s" branch))
         (println (format "[TIP] A release is allowed only on these branches: %s" (str allowed-branches)))
