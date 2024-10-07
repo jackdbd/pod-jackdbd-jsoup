@@ -95,6 +95,10 @@
           :task (tasks/release! {:dry-run false
                                  :prerelease-type "RC"})}
 
+         register
+         {:doc "Download manifest.edn from GitHub Releases, then copy manifest.edn and examples to my local pod registry"
+          :task (shell "./script/register.sh")}
+
          -resources
          {:task (shell "mkdir -p resources/img")}
 
