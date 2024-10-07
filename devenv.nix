@@ -73,6 +73,7 @@
     versions.exec = ''
       echo "=== Versions ==="
       bb --version
+      dot --version
       git --version
       java --version
       native-image --version

@@ -1,27 +1,17 @@
 (ns pod.jackdbd.jsoup
   (:gen-class)
-  (:refer-clojure :exclude [read read-string])
-  (:require [bencode.core :as bencode]
-            [clojure.edn :as edn]
-            [clojure.java.io :as io]
-            [clojure.walk :as walk]
-            [pod.jackdbd.jsoup-wrapper :as api]
-            [pod.jackdbd.other :as other])
-  (:import (java.io PushbackInputStream)))
+  (:refer-clojure :exclude [read-string])
+  (:require
+   [clojure.edn :as edn]
+   [clojure.java.io :as io]
+   [clojure.walk :as walk]
+   [pod.jackdbd.bencode :as bencode]
+   [pod.jackdbd.jsoup-wrapper :as api]))
 
 (def main-ns "pod.jackdbd.jsoup")
 
-(def stdin (PushbackInputStream. System/in))
-
-(defn write [v]
-  (bencode/write-bencode System/out v)
-  (.flush System/out))
-
 (defn read-string [^"[B" v]
   (String. v))
-
-(defn read []
-  (bencode/read-bencode stdin))
 
 (def debug? false)
 
@@ -30,19 +20,17 @@
     (binding [*out* (io/writer System/err)]
       (apply println strs))))
 
+(def lookup {'pod.jackdbd.jsoup/select api/select})
 ;; Taken from https://github.com/babashka/babashka-sql-pods/blob/92d2eedb5afcb517880d9d4158f7ee5b843b5231/src/pod/babashka/sql.clj#L151
-(def lookup
-  (let [m {'select api/select
-           'multi-arity-func other/multi-arity-func}]
-    (zipmap (map (fn [sym]
-                   (symbol main-ns (name sym)))
-                 (keys m))
-            (vals m))))
 
 (comment
-  ;; alternative
-  (def lookup {'pod.jackdbd.jsoup/select api/select
-               'pod.jackdbd.jsoup/multi-arity-func other/multi-arity-func}))
+  ;; alternative, seen here: https://github.com/babashka/babashka-sql-pods/blob/92d2eedb5afcb517880d9d4158f7ee5b843b5231/src/pod/babashka/sql.clj#L151
+  (def lookup
+    (let [m {'select api/select}]
+      (zipmap (map (fn [sym]
+                     (symbol main-ns (name sym)))
+                   (keys m))
+              (vals m)))))
 
 (def describe-map
   (walk/postwalk
@@ -51,18 +39,15 @@
          v))
    `{:format :edn
      :namespaces [{:name pod.jackdbd.jsoup
-                   :vars [{:name select}
-                          {:name multi-arity-func}]}]
+                   :vars [{:name select}]}]
      :opts {:shutdown {}}}))
 
 (debug describe-map)
 
 ;; Taken from https://github.com/babashka/pod-babashka-parcera/blob/04a14e783fa463ba6d22aa4386ac34ff5f0db176/src/pod/babashka/parcera.clj#L56
 (defn main []
-  ;; (prn "Run pod message loop forever")
   (loop []
-    ;; (prn "new loop iteration")
-    (let [message (try (read)
+    (let [message (try (bencode/read)
                        (catch java.io.EOFException _
                          ::EOF))]
       (when-not (identical? ::EOF message)
@@ -73,7 +58,7 @@
                          read-string)
               id (or id "unknown")]
           (case op
-            :describe (do (write describe-map)
+            :describe (do (bencode/write describe-map)
                           (recur))
 
             :invoke (do (try
@@ -90,7 +75,7 @@
                                     reply {"value" value
                                            "id" id
                                            "status" ["done"]}]
-                                (write reply))
+                                (bencode/write reply))
                               (throw (ex-info (str "Var not found: " var) {}))))
                           (catch Throwable e
                             (debug e)
@@ -100,7 +85,7 @@
                                                            :type (class e)))
                                          "id" id
                                          "status" ["done" "error"]}]
-                              (write reply))))
+                              (bencode/write reply))))
                         (recur))
 
             :shutdown (System/exit 0)
@@ -110,7 +95,7 @@
                            "ex-data" (pr-str {:op op})
                            "id" id
                            "status" ["done" "error"]}]
-                (write reply))
+                (bencode/write reply))
               (recur))))))))
 
 (def musl?
@@ -142,14 +127,7 @@
   (debug describe-map)
   musl?
 
-  (write "Hello")
-  (write 9999)
-  (write {:name "Godzilla" :color "black" :size "large"})
-  (write [:foo "bar" :baz 123])
-  (write describe-map)
-  (write {"value" "some value"
-          "id" "some-id"
-          "status" ["done"]})
+  (bencode/write describe-map)
 
   ;; https://www.cs.cmu.edu/~pattis/15-1XX/common/handouts/ascii.html
   (def hello (byte-array [104 101 108 108 111]))

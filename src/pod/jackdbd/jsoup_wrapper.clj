@@ -1,8 +1,10 @@
 (ns pod.jackdbd.jsoup-wrapper
   "Clojure wrapper for jsoup (Java HTML Parser)."
-  (:require [clojure.string :as str])
-  (:import (org.jsoup Jsoup)
-           (org.jsoup.nodes Element Attribute)))
+  (:require
+   [clojure.string :as str])
+  (:import
+   (org.jsoup Jsoup)
+   (org.jsoup.nodes Element Attribute)))
 
 (set! *warn-on-reflection* true)
 

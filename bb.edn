@@ -55,6 +55,18 @@
          {:doc "Print dependencies that would be upgraded"
           :task (shell "neil dep upgrade --dry-run")}
 
+         -graph:gen
+         {:task (clojure "-X:hiera" :layout :vertical)}
+
+         -graph:copy
+         {:depends [-resources]
+          :task (shell "cp target/hiera/namespaces.png resources/img")}
+
+         graph
+         {:depends [-graph:gen -graph:copy]
+          :doc "Generate a graph of dependencies between namespaces and copy the image to resources/img"
+          :task (shell "feh resources/img/namespaces.png")}
+
          list:jar
          {:doc "List the contents of the jar"
           :depends [build:jar]
@@ -82,6 +94,9 @@
          {:doc "Promote current prerelease to a release and publish it to Clojars and GitHub Releases"
           :task (tasks/release! {:dry-run false
                                  :prerelease-type "RC"})}
+
+         -resources
+         {:task (shell "mkdir -p resources/img")}
 
          test
          {:doc "Run all tests"
