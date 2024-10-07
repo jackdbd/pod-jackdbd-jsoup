@@ -22,6 +22,7 @@ Whether the pod is *registered* or not, you can always load it with this method:
 1. Extract the binary from the archive (e.g. `unzip` it).
 
 And either (option A):
+
 1. Move the binary to your [`BABASHKA_PODS_DIR`](https://github.com/babashka/pods?tab=readme-ov-file#where-does-the-pod-come-from).
 1. Load the pod using its **file name**.
 
@@ -80,6 +81,31 @@ objdump --dynamic-syms target/pod-jackdbd
 
 ![Dependency graph of the namespaces, generated with clj-hiera](./resources/img/namespaces.png)
 
+### Release management
+
+Each push to `main` triggers a deploy to Clojars. These versions will have a semver range (e.g. `1.2.3`).
+
+When you are on `main` and you are ready to make a **release**, run this command:
+
+```sh
+bb release
+```
+
+After each successful deploy to Clojars from `main`, a **release** on GitHub Releases will be created.
+
+Each push to `canary` triggers a deploy to Clojars. These versions will have a semver range, a suffix and a counter incremented automatically (e.g. `1.2.3-RC.1`, `1.2.3-RC.2`). I don't do [snapshot versions](https://stackoverflow.com/a/5901460/3036129) because I think they are a bad idea. I consider each version published to Clojars an immutable artifact and I never overwrite it.
+
+When you are on `canary` and you are ready to make a **pre-release**, run this command:
+
+```sh
+bb prerelease
+```
+
+After each successful deploy to Clojars from `canary`, a **pre-release** on GitHub Releases will be created.
+
+>[!IMPORTANT]
+> A deploy on Clojars and GitHub Releases do not imply that the pod is registered on the Pod registry. At the moment, this last step must be done manually.
+
 ### Registering the pod on the Pod registry
 
 The [CI/CD pipeline](./.github/workflows/ci-cd.yaml) takes care of creating a GitHub release that includes the following assets:
@@ -90,7 +116,7 @@ The [CI/CD pipeline](./.github/workflows/ci-cd.yaml) takes care of creating a Gi
 
 Download the `manifest.edn` and make a PR on the Pod registry following [these instructions](https://github.com/babashka/pod-registry?tab=readme-ov-file#registering-a-pod).
 
-> [!IMPORTANT]
+> [!NOTE]
 > Every pod version has its own `manifest.edn`.
 
 Once the PR on [Pod registry](https://github.com/babashka/pod-registry) gets merged, the pod version will be considered *registered* and users will be able to load it using the **qualified keyword** for the pod and the desired **version**, instead of having to download the binary from a GitHub release.
