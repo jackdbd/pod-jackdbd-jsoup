@@ -20,7 +20,7 @@
 
   :neil
   {:project {:name com.github.jackdbd/pod.jackdbd.jsoup
-             :version "0.4.0-RC.1"}}
+             :version "0.4.0"}}
 
   :test
   {:extra-deps {babashka/babashka.pods {:mvn/version "0.2.0"}
