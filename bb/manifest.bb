@@ -68,6 +68,11 @@
 Babashka Pod registry manifest.edn generator
   
 Generate a manifest.edn to register your pod on the pod registry.
+                                  
+WARNING:
+If you simply need to update an existing manifest.edn, run the `upgrade-manifest.clj` script in the `pod-registry` repo instead!
+bb script/upgrade-manifest.clj com.github.jackdbd/jsoup <new-version>
+https://github.com/babashka/pod-registry/pull/103#issuecomment-2397883424
   
 Options:
 %s
@@ -100,37 +105,39 @@ Examples:
   (let [opts (cli/parse-opts *command-line-args* {:spec spec :error-fn error-fn})
         result (if (or (nil? *command-line-args*) (:help opts) (:h opts))
                  (help {:spec spec})
-                 (let [pod-id (:name opts)
-                       pod-name (str/replace pod-id #"\." "-")
+                 (let [pod-name (str/replace (:name opts) #"\." "-")
+                       splits (str/split pod-name (re-pattern "/"))
+                       bin-name (last splits)
+                       version (:version opts)
                        artifacts (cond-> []
                                    (:linux-amd64 opts) (conj {:os/arch "amd64"
                                                               :os/name "Linux.*"
                                                               :artifact/url (:linux-amd64 opts)
-                                                              :artifact/executable pod-name})
+                                                              :artifact/executable bin-name})
                                    (:macos-aarch64 opts) (conj {:os/arch "aarch64"
                                                                 :os/name "Mac.*"
                                                                 :artifact/url (:macos-aarch64 opts)
-                                                                :artifact/executable pod-name})
+                                                                :artifact/executable bin-name})
                                    (:macos-x86_64 opts) (conj {:os/arch "x86_64"
                                                                :os/name "Mac.*"
                                                                :artifact/url (:macos-x86_64 opts)
-                                                               :artifact/executable pod-name})
+                                                               :artifact/executable bin-name})
                                    (:windows-amd64 opts) (conj {:os/arch "amd64"
                                                                 :os/name "Windows.*"
                                                                 :artifact/url (:windows-amd64 opts)
-                                                                :artifact/executable (format "%s.exe" pod-name)})
+                                                                :artifact/executable (format "%s.exe" bin-name)})
                                    (:uberjar opts) (conj {:artifact/url (:uberjar opts)}))
-                       manifest-data {:pod/name (symbol pod-id)
+                       manifest-data {:pod/name (:name opts)
                                       :pod/description (:description opts)
                                       :pod/example (:example opts)
                                       :pod/language (:language opts)
                                       :pod/license (:license opts)
-                                      :pod/version (:version opts)
+                                      :pod/version version
                                       :pod/artifacts artifacts}
                        filepath "manifest.edn"
                        edn-content (format-edn manifest-data)]
                    (spit filepath edn-content)
-                   {:exit-code 0 :stdout (format "Wrote %s" filepath)}))]
+                   {:exit-code 0 :stdout (format "Wrote %s for pod %s v%s" filepath (:name opts) version)}))]
     (when-let [stdout (:stdout result)]
       (println stdout))))
 

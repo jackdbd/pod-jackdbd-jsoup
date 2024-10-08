@@ -85,6 +85,10 @@
                       jar-path (format "target/%s-%s-standalone.jar" pod-name pod-version)]
                   (shell "jar --file" jar-path "--list"))}
 
+         manifest
+         {:doc "Run the manifest.edn CLI"
+          :task (shell (into ["bb" "bb/manifest.bb"] *command-line-args*))}
+
          prerelease
          {:doc "Increment current prerelease and publish it Clojars and GitHub Releases"
           :task (tasks/prerelease! {:dry-run false
@@ -94,6 +98,10 @@
          {:doc "Promote current prerelease to a release and publish it to Clojars and GitHub Releases"
           :task (tasks/release! {:dry-run false
                                  :prerelease-type "RC"})}
+
+         register
+         {:doc "Download manifest.edn from GitHub Releases, then copy manifest.edn and examples to my local pod registry"
+          :task (shell "./script/register.sh")}
 
          -resources
          {:task (shell "mkdir -p resources/img")}
