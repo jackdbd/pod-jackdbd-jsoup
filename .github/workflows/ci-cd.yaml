@@ -335,7 +335,7 @@ jobs:
 
   clojars-release:
     name: Clojars release
-    if: ${{ github.event_name != 'pull_request' }}
+    if: ${{ github.event_name != 'pull_request' && !github.event.pull_request.merged }}
     # Only the uberjar is published to Clojars, but since some tests require the
     # native binary (for Linux/macOS/Windows), I have to wait for those tests to
     # pass before publishing the uberjar to Clojars.
@@ -379,7 +379,7 @@ jobs:
 
   github-release:
     name: GitHub release
-    if: ${{ github.event_name != 'pull_request' }}
+    if: ${{ github.event_name != 'pull_request' && !github.event.pull_request.merged }}
     needs: [shared-outputs, uberjar, linux-amd64-binary, macos-aarch64-binary, windows-amd64-binary, clojars-release]
     runs-on: ubuntu-latest
     
