@@ -4,7 +4,7 @@ set -euo pipefail
 # See deps.edn and the pom.xml generated when building the uberjar.
 GROUP_ID=com.github.jackdbd
 ARTIFACT_ID=pod.jackdbd.jsoup
-ARTIFACT_VERSION=$POD_VERSION
+ARTIFACT_VERSION=$UBERJAR_VERSION
 
 # https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/store-information-in-variables#default-environment-variables
 if [ "${CI+x}" ]; then

@@ -18,17 +18,17 @@ env:
   HEAP_SIZE_AT_BUILD_TIME: '-R:MaxHeapSize=1024m'
   JAVA_VERSION: 21
   OPTIMIZATION_LEVEL: '-O2'
-  POD_ID: pod.jackdbd.jsoup
-  POD_NAME: pod-jackdbd-jsoup
+  UBERJAR_ID: pod.jackdbd.jsoup # See deps.edn and the pom.xml generated when building the uberjar.
+  BINARY_NAME: pod-jackdbd-jsoup
 
 jobs:
-  set-shared-outputs:
-    name: Set shared outputs
+  shared-outputs:
+    name: Shared outputs
     runs-on: ubuntu-latest
   
     outputs:
-      pod_version: ${{ steps.set_outputs.outputs.pod_version }}
       is_prerelease: ${{ steps.set_outputs.outputs.is_prerelease }}
+      version: ${{ steps.set_outputs.outputs.version }}
 
     steps:
       - name: 🛎️ Checkout
@@ -42,27 +42,28 @@ jobs:
       - name: Set job outputs
         id: set_outputs
         run: |
-          POD_VERSION=$(bb -e '(-> (slurp "deps.edn") edn/read-string :aliases :neil :project :version)' | tr -d '"')
-          echo "pod_version=$POD_VERSION" >> $GITHUB_OUTPUT
-
           if [ "${{ github.ref }}" == "refs/heads/main" ]; then
             echo "is_prerelease=false" >> $GITHUB_OUTPUT
           else
             echo "is_prerelease=true" >> $GITHUB_OUTPUT
           fi
 
+          VERSION=$(bb -e '(-> (slurp "deps.edn") edn/read-string :aliases :neil :project :version)' | tr -d '"')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+
       - name: Log job outputs
         run: |
-          echo "pod_version is ${{ steps.set_outputs.outputs.pod_version }}"
           echo "is_prerelease is ${{ steps.set_outputs.outputs.is_prerelease }}"
+          echo "version is ${{ steps.set_outputs.outputs.version }}"
 
-  build-uberjar:
-    name: Build uberjar
+  uberjar:
+    name: Uberjar
     runs-on: ubuntu-latest
-    needs: [set-shared-outputs]
+    needs: [shared-outputs]
   
     env:
-      POD_VERSION: ${{ needs.set-shared-outputs.outputs.pod_version }}
+      UBERJAR_VERSION: ${{ needs.shared-outputs.outputs.version }}
   
     steps:
       - name: 🛎️ Checkout
@@ -98,22 +99,23 @@ jobs:
           key: cljdeps-${{ hashFiles('deps.edn', 'bb.edn') }}
           restore-keys: cljdeps-
       
-      - name: 📦 Compile pod into an uberjar
+      - name: 📦 Compile uberjar
         run: clojure -T:build uber
   
       - name: ⬆️ Upload uberjar
         uses: actions/upload-artifact@v4
         with:
           name: uberjar
-          path: target/${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar
+          path: target/${{ env.UBERJAR_ID }}-${{ env.UBERJAR_VERSION }}-standalone.jar
+          if-no-files-found: error
 
-  linux:
-    name: Compile Linux binary & Test
+  linux-amd64-binary:
+    name: Linux amd64 binary, Test
     runs-on: ubuntu-latest
-    needs: [set-shared-outputs, build-uberjar]
+    needs: [shared-outputs, uberjar]
 
     env:
-      POD_VERSION: ${{ needs.set-shared-outputs.outputs.pod_version }}
+      UBERJAR_VERSION: ${{ needs.shared-outputs.outputs.version }}
 
     steps:
       - name: 🛎️ Checkout
@@ -160,28 +162,29 @@ jobs:
         run: ./script/compile.sh
       
       # The tests expect the uberjar and the binary to be in a directory called "target"
-      - name: Copy the uberjar and the binary to the target directory
+      - name: Copy uberjar and binary to target/
         run: |
           mkdir target
-          cp ${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar target/
-          cp ${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone target/${{ env.POD_NAME }}
+          cp ${{ env.UBERJAR_ID }}-${{ env.UBERJAR_VERSION }}-standalone.jar target/
+          cp ${{ env.BINARY_NAME }} target/
 
       - name: ⬆️ Upload amd64 Linux binary
         uses: actions/upload-artifact@v4
         with:
           name: ubuntu-latest-amd64-binary
-          path: target/${{ env.POD_NAME }}
+          path: target/${{ env.BINARY_NAME }}
+          if-no-files-found: error
         
       - name: 🔍 Run all tests
         run: clojure -X:test
       
-  macos:
-    name: Compile macos-latest-aarch64-binary, Test
+  macos-aarch64-binary:
+    name: macOS aarch64 binary, Test
     runs-on: macOS-latest
-    needs: [set-shared-outputs, build-uberjar]
+    needs: [shared-outputs, uberjar]
 
     env:
-      POD_VERSION: ${{ needs.set-shared-outputs.outputs.pod_version }}
+      UBERJAR_VERSION: ${{ needs.shared-outputs.outputs.version }}
 
     steps:
       - name: 🛎️ Checkout
@@ -222,8 +225,7 @@ jobs:
         # gave me this error:
         # On AArch64, only 'ARMV8_A', 'ARMV8_1_A', 'COMPATIBILITY', 'NATIVE' are available.
         run: |
-          native-image \
-            -jar ${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar \
+          native-image -jar ${{ env.UBERJAR_ID }}-${{ env.UBERJAR_VERSION }}-standalone.jar ${{ env.BINARY_NAME }} \
             '-H:ReflectionConfigurationFiles=reflection.json' \
             '-H:+ReportExceptionStackTraces' \
             '-J-Dclojure.compiler.direct-linking=true' \
@@ -236,28 +238,29 @@ jobs:
             '--report-unsupported-elements-at-runtime'
 
       # The tests expect the uberjar and the binary to be in a directory called "target"
-      - name: Copy the uberjar and the binary to the target directory
+      - name: Copy uberjar and binary to target/
         run: |
           mkdir target
-          cp ${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar target/
-          cp ${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone target/${{ env.POD_NAME }}
+          cp ${{ env.UBERJAR_ID }}-${{ env.UBERJAR_VERSION }}-standalone.jar target/
+          cp ${{ env.BINARY_NAME }} target/
 
-      - name: ⬆️ Upload the aarch64 macOS binary
+      - name: ⬆️ Upload aarch64 macOS binary
         uses: actions/upload-artifact@v4
         with:
           name: macos-latest-aarch64-binary
-          path: target/${{ env.POD_NAME }}
+          path: target/${{ env.BINARY_NAME }}
+          if-no-files-found: error
 
       - name: 🔍 Run all tests
         run: clojure -X:test      
 
-  windows:
-    name: Compile Windows binary & Test
+  windows-amd64-binary:
+    name: Windows amd64 binary, Test
     runs-on: windows-latest
-    needs: [set-shared-outputs, build-uberjar]
+    needs: [shared-outputs, uberjar]
 
     env:
-      POD_VERSION: ${{ needs.set-shared-outputs.outputs.pod_version }}
+      UBERJAR_VERSION: ${{ needs.shared-outputs.outputs.version }}
 
     steps:
       - name: 🛎️ Checkout
@@ -293,11 +296,11 @@ jobs:
         with:
           name: uberjar
         
+      # When compiling a windows executable, native-image adds the `.exe` extension.
       # See: https://github.com/babashka/pod-babashka-buddy/blob/main/script/compile.bat
       - name: 📦 Compile uberjar to amd64-windows binary with GraalVM native-image
         run: >
-          native-image
-          -jar ${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar
+          native-image -jar ${{ env.UBERJAR_ID }}-${{ env.UBERJAR_VERSION }}-standalone.jar ${{ env.BINARY_NAME }}
           '-H:ReflectionConfigurationFiles=reflection.json'
           '-H:+ReportExceptionStackTraces'
           '-J-Dclojure.compiler.direct-linking=true'
@@ -309,30 +312,38 @@ jobs:
           '--no-fallback'
           '--report-unsupported-elements-at-runtime'
 
-      - name: Copy the uberjar and the binary to the target directory
+      - name: Copy uberjar and binary to target/
         run: |
           mkdir target
-          move ${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar target\\${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar
-          move "${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.exe" ".\\target\\${{ env.POD_NAME }}.exe"
+          move ${{ env.UBERJAR_ID }}-${{ env.UBERJAR_VERSION }}-standalone.jar target\\${{ env.UBERJAR_ID }}-${{ env.UBERJAR_VERSION }}-standalone.jar
+          move ${{ env.BINARY_NAME }}.exe target\\${{ env.BINARY_NAME }}.exe
+        shell: cmd
+
+      # Troubleshooting: Windows command prompt equivalent for `ls -la`
+      - run: dir /A /Q
         shell: cmd
 
       - name: ⬆️ Upload amd64-windows binary
         uses: actions/upload-artifact@v4
         with:
           name: windows-latest-amd64-binary
-          path: ".\\target\\${{ env.POD_NAME }}.exe"
+          path: ".\\target\\${{ env.BINARY_NAME }}.exe"
+          if-no-files-found: error
 
       - name: 🔍 Run all tests
         run: clojure -X:test
 
-  clojars:
-    name: Publish to Clojars
+  clojars-release:
+    name: Clojars release
     if: ${{ github.event_name != 'pull_request' }}
-    needs: [set-shared-outputs, linux, macos, windows] # publish only when all tests on all platforms pass
+    # Only the uberjar is published to Clojars, but since some tests require the
+    # native binary (for Linux/macOS/Windows), I have to wait for those tests to
+    # pass before publishing the uberjar to Clojars.
+    needs: [shared-outputs, linux-amd64-binary, macos-aarch64-binary, windows-amd64-binary] # publish only when all tests on all platforms pass
     runs-on: ubuntu-latest
 
     env:
-      ARTIFACT_VERSION: ${{ needs.set-shared-outputs.outputs.pod_version }}
+      ARTIFACT_VERSION: ${{ needs.shared-outputs.outputs.version }}
 
     permissions:
       contents: write
@@ -346,7 +357,7 @@ jobs:
         with:
           cli: 'latest'
       
-      - name: 📦 Compile pod into an uberjar
+      - name: 📦 Compile uberjar
         run: clojure -T:build uber
 
       - name: 🌐 Publish version ${{ env.ARTIFACT_VERSION }} to Clojars
@@ -369,12 +380,12 @@ jobs:
   github-release:
     name: GitHub release
     if: ${{ github.event_name != 'pull_request' }}
-    needs: [set-shared-outputs, build-uberjar, linux, macos, windows, clojars]
+    needs: [shared-outputs, uberjar, linux-amd64-binary, macos-aarch64-binary, windows-amd64-binary, clojars-release]
     runs-on: ubuntu-latest
     
     env:
-      IS_PRERELEASE: ${{ needs.set-shared-outputs.outputs.is_prerelease }}
-      POD_VERSION: ${{ needs.set-shared-outputs.outputs.pod_version }}
+      IS_PRERELEASE: ${{ needs.shared-outputs.outputs.is_prerelease }}
+      VERSION: ${{ needs.shared-outputs.outputs.version }}
 
     permissions:
       contents: write
@@ -414,14 +425,15 @@ jobs:
 
       - name: 📦 Create archives for all assets to be included in the GitHub release
         run: |
-          pushd . && cd ubuntu-latest-amd64 && zip "${{ env.POD_NAME }}-${{ env.POD_VERSION }}-ubuntu-latest-amd64.zip" "pod-jackdbd-jsoup" && popd
-          pushd . && cd macos-latest-aarch64 && zip "${{ env.POD_NAME }}-${{ env.POD_VERSION }}-macos-latest-aarch64.zip" "pod-jackdbd-jsoup" && popd
-          pushd . && cd windows-latest-amd64 && zip "${{ env.POD_NAME }}-${{ env.POD_VERSION }}-windows-latest-amd64.zip" "pod-jackdbd-jsoup.exe" && popd
-          mv ubuntu-latest-amd64/${{ env.POD_NAME }}-${{ env.POD_VERSION }}-ubuntu-latest-amd64.zip .
-          mv macos-latest-aarch64/${{ env.POD_NAME }}-${{ env.POD_VERSION }}-macos-latest-aarch64.zip .
-          mv windows-latest-amd64/${{ env.POD_NAME }}-${{ env.POD_VERSION }}-windows-latest-amd64.zip .
+          pushd . && cd ubuntu-latest-amd64 && zip "${{ env.BINARY_NAME }}-${{ env.VERSION }}-ubuntu-latest-amd64.zip" "${{ env.BINARY_NAME }}" && popd
+          pushd . && cd macos-latest-aarch64 && zip "${{ env.BINARY_NAME }}-${{ env.VERSION }}-macos-latest-aarch64.zip" "${{ env.BINARY_NAME }}" && popd
+          pushd . && cd windows-latest-amd64 && zip "${{ env.BINARY_NAME }}-${{ env.VERSION }}-windows-latest-amd64.zip" "${{ env.BINARY_NAME }}.exe" && popd
+          mv ubuntu-latest-amd64/${{ env.BINARY_NAME }}-${{ env.VERSION }}-ubuntu-latest-amd64.zip .
+          mv macos-latest-aarch64/${{ env.BINARY_NAME }}-${{ env.VERSION }}-macos-latest-aarch64.zip .
+          mv windows-latest-amd64/${{ env.BINARY_NAME }}-${{ env.VERSION }}-windows-latest-amd64.zip .
 
       # Troubleshooting: do we have every assets we want to include in the GitHub release?
+      - run: ls -la
       # - run: ls -R
 
       # https://github.com/marketplace/actions/gh-release
@@ -430,21 +442,21 @@ jobs:
         id: github_release
         with:
           body: |
-            📦 **${{ env.POD_NAME }}** version `${{ env.POD_VERSION }}` is [available on Clojars](https://clojars.org/com.github.jackdbd/pod.jackdbd.jsoup/versions/${{ env.POD_VERSION }}).
+            📦 **${{ env.BINARY_NAME }}** version `${{ env.VERSION }}` is [available on Clojars](https://clojars.org/com.github.jackdbd/pod.jackdbd.jsoup/versions/${{ env.VERSION }}).
           # draft: true
           fail_on_unmatched_files: true
           files: |
-            ${{ env.POD_ID }}-${{ env.POD_VERSION }}-standalone.jar
-            ${{ env.POD_NAME }}-${{ env.POD_VERSION }}-macos-latest-aarch64.zip
-            ${{ env.POD_NAME }}-${{ env.POD_VERSION }}-ubuntu-latest-amd64.zip
-            ${{ env.POD_NAME }}-${{ env.POD_VERSION }}-windows-latest-amd64.zip
+            ${{ env.UBERJAR_ID }}-${{ env.VERSION }}-standalone.jar
+            ${{ env.BINARY_NAME }}-${{ env.VERSION }}-macos-latest-aarch64.zip
+            ${{ env.BINARY_NAME }}-${{ env.VERSION }}-ubuntu-latest-amd64.zip
+            ${{ env.BINARY_NAME }}-${{ env.VERSION }}-windows-latest-amd64.zip
           # body is prepended to these automatically generated release notes.
           # See here for how to configure these release notes:
           # https://docs.github.com/en/repositories/releasing-projects-on-github/automatically-generated-release-notes#configuring-automatically-generated-release-notes
           generate_release_notes: true
-          name: v${{ env.POD_VERSION }}
+          name: v${{ env.VERSION }}
           prerelease: ${{ env.IS_PRERELEASE }}
-          tag_name: v${{ env.POD_VERSION }}
+          tag_name: v${{ env.VERSION }}
 
       # Troubleshooting: show help of manifest.edn CLI
       - run: bb bb/manifest.bb --help
@@ -481,4 +493,4 @@ jobs:
         with:
           files: |
             manifest.edn
-          tag_name: v${{ env.POD_VERSION }}
+          tag_name: v${{ env.VERSION }}
